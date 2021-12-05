@@ -12,7 +12,7 @@
 #include "ipq6018-cp-cpu.dtsi"
 
 / {
-	model = "openmptcprouter_5G_6018";
+	model = "PANGU L6018";
 	compatible = "qcom,ap-cp01-c3", "qcom,ipq6018";
 
 	aliases {
@@ -476,7 +476,7 @@
 		};
 
 		led@29 {
-			label = "green:lte2";
+			label = "green:lte29";
 			gpios = <&tlmm 29 GPIO_ACTIVE_HIGH>;
 		};
 
