@@ -1,0 +1,273 @@
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 026841a..3bde449 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -4504,6 +4504,16 @@ struct wpa_driver_ops {
+ 	 * explicitly allow reception of broadcast Public Action frames.
+ 	 */
+ 	int (*dpp_listen)(void *priv, bool enable);
++
++	/**
++	 * get_wideband_support - Get wideband support for an interface
++	 * @priv: Private driver interface data
++	 * Returns 0 on success, -1 on failure
++	 *
++	 * This command can be used to request wideband (5-7GHz) support for
++	 * a given interface.
++	 */
++	int (*get_wideband_support)(void *priv);
+ };
+ 
+ /**
+@@ -5068,6 +5078,11 @@ enum wpa_event_type {
+ 	 * EVENT_UPDATE_SSID - Notification of SSID Change
+ 	 */
+ 	EVENT_UPDATE_SSID,
++
++	/**
++	 * EVENT_WIDEBAND_SUPPORT - Notification for wideband support
++	 */
++	EVENT_WIDEBAND_SUPPORT,
+ };
+ 
+ 
+@@ -5936,6 +5951,13 @@ union wpa_event_data {
+ 		char ssid[SSID_MAX_LEN];
+ 		u32 ssid_len;
+ 	} update_ssid;
++
++	/**
++	 * struct wideband_support - Data for EVENT_WIDEBAND_SUPPORT
++	 */
++	struct wideband_support {
++		u8 value;
++	} wideband_support;
+ };
+ 
+ /**
+diff --git a/src/drivers/driver_common.c b/src/drivers/driver_common.c
+index dd91ed3..a57eed5 100644
+--- a/src/drivers/driver_common.c
++++ b/src/drivers/driver_common.c
+@@ -91,6 +91,7 @@ const char * event_to_string(enum wpa_event_type event)
+ 	E2S(UPDATE_DH);
+ 	E2S(UNPROT_BEACON);
+ 	E2S(UPDATE_SSID);
++	E2S(WIDEBAND_SUPPORT);
+ 	}
+ 
+ 	return "UNKNOWN";
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 035e62c..ecde256 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -10689,7 +10689,6 @@ static int add_acs_freq_list(struct nl_msg *msg, const int *freq_list)
+ 	return ret;
+ }
+ 
+-
+ static int wpa_driver_do_acs(void *priv, struct drv_acs_params *params)
+ {
+ 	struct i802_bss *bss = priv;
+@@ -11356,6 +11355,88 @@ fail:
+ 
+ #endif /* CONFIG_MBO */
+ 
++#define QCA_NL80211_VENDOR_SUBCMD_WIDEBAND_SUPPORT 322
++
++enum qca_wlan_vendor_attr_generic_param {
++	QCA_WLAN_VENDOR_ATTR_PARAM_INVALID = 0,
++	QCA_WLAN_VENDOR_ATTR_PARAM_DATA,
++	QCA_WLAN_VENDOR_ATTR_PARAM_LENGTH,
++	QCA_WLAN_VENDOR_ATTR_PARAM_FLAGS,
++
++	QCA_WLAN_VENDOR_ATTR_PARAM_LAST,
++	QCA_WLAN_VENDOR_ATTR_PARAM_MAX =
++		QCA_WLAN_VENDOR_ATTR_PARAM_LAST - 1
++};
++
++static int get_wideband_support_handler(struct nl_msg *msg, void *arg)
++{
++	struct wpa_driver_nl80211_data *drv;
++	struct nlattr *tb[NL80211_ATTR_MAX + 1];
++	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
++	struct nlattr *nl_vend, *attr;
++	struct nlattr *tb_vendor[QCA_WLAN_VENDOR_ATTR_MAX + 1];
++	union wpa_event_data event;
++
++	drv = (struct wpa_driver_nl80211_data *)arg;
++	if (!drv)
++		return NL_SKIP;
++
++	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
++		  genlmsg_attrlen(gnlh, 0), NULL);
++
++	nl_vend = tb[NL80211_ATTR_VENDOR_DATA];
++	if (!nl_vend)
++		return NL_SKIP;
++
++	nla_parse(tb_vendor, QCA_WLAN_VENDOR_ATTR_MAX,
++		  nla_data(nl_vend), nla_len(nl_vend), NULL);
++
++	attr = tb_vendor[QCA_WLAN_VENDOR_ATTR_PARAM_DATA];
++	if (!attr) {
++		wpa_printf(MSG_ERROR, "nl80211: data could not be found");
++		return NL_SKIP;
++	}
++
++        event.wideband_support.value = (u8)nla_get_u32(attr);
++	wpa_printf(MSG_DEBUG, "nl80211: Driver returned wideband support=%hhu",
++		   event.wideband_support.value);
++
++	wpa_supplicant_event(drv->ctx, EVENT_WIDEBAND_SUPPORT, &event);
++	return NL_SKIP;
++}
++
++
++static int wpa_driver_get_wideband_support(void *priv)
++{
++	struct i802_bss *bss = priv;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct nl_msg *msg;
++	struct nlattr *data;
++	union wpa_event_data event;
++	int ret;
++
++	if (!(msg = nl80211_drv_msg(drv, 0, NL80211_CMD_VENDOR)) ||
++	    nla_put_u32(msg, NL80211_ATTR_VENDOR_ID, OUI_QCA) ||
++	    nla_put_u32(msg, NL80211_ATTR_VENDOR_SUBCMD,
++			QCA_NL80211_VENDOR_SUBCMD_GET_WIFI_CONFIGURATION) ||
++	    !(data = nla_nest_start(msg, NL80211_ATTR_VENDOR_DATA)) ||
++	    nla_put_u32(msg, QCA_WLAN_VENDOR_ATTR_CONFIG_GENERIC_COMMAND,
++			QCA_NL80211_VENDOR_SUBCMD_WIDEBAND_SUPPORT)) {
++		nlmsg_free(msg);
++		return -ENOBUFS;
++	}
++	nla_nest_end(msg, data);
++
++	ret = send_and_recv_msgs(drv, msg, get_wideband_support_handler,
++				 drv, NULL, NULL);
++	if (ret) {
++		wpa_printf(MSG_DEBUG,
++			   "nl80211: Failed to get wideband support: %s",
++			   strerror(-ret));
++	}
++
++	return ret;
++}
+ #endif /* CONFIG_DRIVER_NL80211_QCA */
+ 
+ 
+@@ -11837,6 +11918,7 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.p2p_lo_stop = nl80211_p2p_lo_stop,
+ 	.set_default_scan_ies = nl80211_set_default_scan_ies,
+ 	.set_tdls_mode = nl80211_set_tdls_mode,
++	.get_wideband_support = wpa_driver_get_wideband_support,
+ #ifdef CONFIG_MBO
+ 	.get_bss_transition_status = nl80211_get_bss_transition_status,
+ 	.ignore_assoc_disallow = nl80211_ignore_assoc_disallow,
+diff --git a/wpa_supplicant/driver_i.h b/wpa_supplicant/driver_i.h
+index cccfbf4..f8cf18f 100644
+--- a/wpa_supplicant/driver_i.h
++++ b/wpa_supplicant/driver_i.h
+@@ -959,6 +959,13 @@ static inline int wpa_drv_setband(struct wpa_supplicant *wpa_s,
+ 	return wpa_s->driver->set_band(wpa_s->drv_priv, band);
+ }
+ 
++static inline int wpa_drv_get_wideband_support(struct wpa_supplicant *wpa_s)
++{
++	if (!wpa_s->driver->get_wideband_support)
++		return -1;
++	return wpa_s->driver->get_wideband_support(wpa_s->drv_priv);
++}
++
+ static inline int wpa_drv_get_pref_freq_list(struct wpa_supplicant *wpa_s,
+ 					     enum wpa_driver_if_type if_type,
+ 					     unsigned int *num,
+diff --git a/wpa_supplicant/events.c b/wpa_supplicant/events.c
+index 4710528..5e82c5a 100644
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -5451,6 +5451,9 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
+ 	case EVENT_UNPROT_BEACON:
+ 		wpas_event_unprot_beacon(wpa_s, &data->unprot_beacon);
+ 		break;
++	case EVENT_WIDEBAND_SUPPORT:
++                wpa_s->wideband_support = data->wideband_support.value;
++		break;
+ 	default:
+ 		wpa_msg(wpa_s, MSG_INFO, "Unknown event %d", event);
+ 		break;
+diff --git a/wpa_supplicant/op_classes.c b/wpa_supplicant/op_classes.c
+index 805231f..61b8863 100644
+--- a/wpa_supplicant/op_classes.c
++++ b/wpa_supplicant/op_classes.c
+@@ -516,16 +516,30 @@ size_t wpas_supp_op_class_ie(struct wpa_supplicant *wpa_s,
+ 	 * For non-6G use country specific operating class table.
+ 	 * For countries not in the list of countries, use global
+ 	 * operating class table.
++	 *
++	 * Wideband operation operates on the global operating class
++	 * table and allowed only for the US country code.
+ 	 */
+ #define SIXG_FIRST_CFREQ 5935
+ 	if (country_array && bss->freq < SIXG_FIRST_CFREQ) {
+-		for (op = 0; op < size; op++) {
+-			g_op_idx = get_oper_class(country,
+-					country_array[op].country_op_class);
+-			if (g_op_idx &&  wpas_op_class_supported(wpa_s, ssid,
+-						    g_op_idx)) {
+-				wpabuf_put_u8(buf,
+-					      country_array[op].global_op_class);
++		if (wpa_s->wideband_support &&
++		    (country_array == us_op_class)) {
++			for (op = 0; global_op_class[op].op_class; op++) {
++				if (wpas_op_class_supported(wpa_s, ssid,
++					&global_op_class[op])) {
++					wpabuf_put_u8(buf,
++						global_op_class[op].op_class);
++				}
++			}
++		} else {
++			for (op = 0; op < size; op++) {
++				g_op_idx = get_oper_class(country,
++						country_array[op].country_op_class);
++				if (g_op_idx && wpas_op_class_supported(wpa_s,
++							ssid, g_op_idx)) {
++					wpabuf_put_u8(buf,
++						country_array[op].global_op_class);
++				}
+ 			}
+ 		}
+ 	} else {
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 785eb08..d96137d 100644
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -2148,6 +2148,13 @@ void wpa_supplicant_associate(struct wpa_supplicant *wpa_s,
+ 	wpa_s->testing_resend_assoc = 0;
+ #endif /* CONFIG_TESTING_OPTIONS */
+ 
++	/*
++	 * Get wideband support for the interface.
++	 * It is disabled by default unless explicitly enabled.
++	 */
++	wpa_s->wideband_support = 0;
++	wpa_drv_get_wideband_support(wpa_s);
++
+ 	if (wpa_s->last_ssid == ssid) {
+ 		wpa_dbg(wpa_s, MSG_DEBUG, "Re-association to the same ESS");
+ 		wpa_s->reassoc_same_ess = 1;
+diff --git a/wpa_supplicant/wpa_supplicant_i.h b/wpa_supplicant/wpa_supplicant_i.h
+index fd752e7..1377410 100644
+--- a/wpa_supplicant/wpa_supplicant_i.h
++++ b/wpa_supplicant/wpa_supplicant_i.h
+@@ -1311,6 +1311,8 @@ struct wpa_supplicant {
+ 	unsigned int multi_ap_ie:1;
+ 	unsigned int multi_ap_backhaul:1;
+ 	unsigned int multi_ap_fronthaul:1;
++
++	uint8_t wideband_support;
+ };
+ 
+ 

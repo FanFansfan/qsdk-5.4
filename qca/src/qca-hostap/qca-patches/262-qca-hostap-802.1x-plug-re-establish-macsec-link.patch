@@ -1,0 +1,26 @@
+diff --git a/src/pae/ieee802_1x_kay.c b/src/pae/ieee802_1x_kay.c
+index 5edc157..22e5d97 100644
+--- a/src/pae/ieee802_1x_kay.c
++++ b/src/pae/ieee802_1x_kay.c
+@@ -2604,8 +2604,10 @@ static void ieee802_1x_participant_timer(void *eloop_ctx, void *timeout_ctx)
+ 			participant->lrx = false;
+ 			participant->otx = false;
+ 			participant->orx = false;
+-			participant->is_key_server = false;
+-			participant->is_elected = false;
++			if(participant->mode == PSK) {
++				participant->is_key_server = false;
++				participant->is_elected = false;
++			}
+ 			kay->authenticated = false;
+ 			kay->secured = false;
+ 			kay->failed = false;
+@@ -2651,7 +2653,7 @@ static void ieee802_1x_participant_timer(void *eloop_ctx, void *timeout_ctx)
+ 	}
+ 
+ 	if (participant->retry_count < MAX_RETRY_CNT ||
+-	    participant->mode == PSK) {
++	    participant->mode == PSK || participant->mode == EAP_EXCHANGE) {
+ 		ieee802_1x_participant_send_mkpdu(participant);
+ 		participant->retry_count++;
+ 	}

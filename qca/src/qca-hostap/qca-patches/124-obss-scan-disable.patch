@@ -1,0 +1,53 @@
+diff --git a/src/ap/hw_features.c b/src/ap/hw_features.c
+index f6e6903..42e60ec 100644
+--- a/src/ap/hw_features.c
++++ b/src/ap/hw_features.c
+@@ -696,11 +696,13 @@ int hostapd_check_ht_capab(struct hostapd_iface *iface)
+ 	    !ieee80211ac_supported_vht_capab(iface))
+ 		return -1;
+ #endif /* CONFIG_IEEE80211AC */
+-	ret = ieee80211n_check_40mhz(iface);
+-	if (ret)
+-		return ret;
+-	if (!ieee80211n_allowed_ht40_channel_pair(iface))
+-		return -1;
++	if (!(iface->drv_flags & WPA_DRIVER_FLAGS_DISABLE_OBSS_SCAN)) {
++		ret = ieee80211n_check_40mhz(iface);
++		if (ret)
++			return ret;
++		if (!ieee80211n_allowed_ht40_channel_pair(iface))
++			return -1;
++	}
+ 
+ 	return 0;
+ }
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 8ff2f38..300aa0b 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -1864,6 +1864,8 @@ struct wpa_driver_capa {
+ #define WPA_DRIVER_FLAGS_VHT_IBSS		0x0000002000000000ULL
+ /** Driver supports automatic band selection */
+ #define WPA_DRIVER_FLAGS_SUPPORT_HW_MODE_ANY	0x0000004000000000ULL
++/** disable OBSS scan */
++#define WPA_DRIVER_FLAGS_DISABLE_OBSS_SCAN    0x0000008000000000ULL
+ /** Driver supports simultaneous off-channel operations */
+ #define WPA_DRIVER_FLAGS_OFFCHANNEL_SIMULTANEOUS	0x0000008000000000ULL
+ /** Driver supports full AP client state */
+diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
+index a3341a0..24a2403 100644
+--- a/src/drivers/driver_nl80211_capa.c
++++ b/src/drivers/driver_nl80211_capa.c
+@@ -947,8 +947,10 @@ static int wiphy_info_handler(struct nl_msg *msg, void *arg)
+ 					drv->set_prob_oper_freq = 1;
+ 					break;
+ 				case QCA_NL80211_VENDOR_SUBCMD_DO_ACS:
+-					drv->capa.flags |=
+-						WPA_DRIVER_FLAGS_ACS_OFFLOAD;
++					drv->capa.flags |= (
++						WPA_DRIVER_FLAGS_ACS_OFFLOAD |
++						 WPA_DRIVER_FLAGS_DISABLE_OBSS_SCAN);
++
+ 					break;
+ 				case QCA_NL80211_VENDOR_SUBCMD_SETBAND:
+ 					drv->setband_vendor_cmd_avail = 1;

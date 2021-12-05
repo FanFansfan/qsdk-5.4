@@ -1,0 +1,45 @@
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 3d44805..26edc02 100644
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -2907,7 +2907,7 @@ static u8 * wpas_populate_assoc_ies(
+ 		algs = WPA_AUTH_ALG_SAE;
+ #endif /* CONFIG_SAE */
+ 
+-	wpa_dbg(wpa_s, MSG_DEBUG, "Automatic auth_alg selection: 0x%x", algs);
++	wpa_dbg(wpa_s, MSG_DEBUG, "Automatic auth_alg selection: 0x%x, ssid_alg 0x%x ", algs, ssid->auth_alg);
+ 	if (ssid->auth_alg) {
+ 		algs = ssid->auth_alg;
+ 		wpa_dbg(wpa_s, MSG_DEBUG,
+@@ -2915,6 +2915,31 @@ static u8 * wpas_populate_assoc_ies(
+ 	}
+ 
+ #ifdef CONFIG_SAE
++	if (wpa_key_mgmt_sae(ssid->key_mgmt)) {
++		struct wpa_ie_data ied;
++		const u8 *rsn;
++		rsn = get_ie(wpa_ie, wpa_ie_len, WLAN_EID_RSN);
++		if (!rsn) {
++			wpa_dbg(wpa_s, MSG_DEBUG,
++					"SAE enabled, but target BSS does not advertise RSN");
++#ifdef CONFIG_DPP
++		} else if (wpa_parse_wpa_ie(rsn, 2 + rsn[1], &ied) == 0 &&
++				(ssid->key_mgmt & WPA_KEY_MGMT_DPP) &&
++				(ied.key_mgmt & WPA_KEY_MGMT_DPP)) {
++			wpa_dbg(wpa_s, MSG_DEBUG, "Prefer DPP over SAE when both are enabled");
++#endif /* CONFIG_DPP */
++		} else if (wpa_parse_wpa_ie(rsn, 2 + rsn[1], &ied) == 0 &&
++				wpa_key_mgmt_sae(ied.key_mgmt)) {
++			wpa_dbg(wpa_s, MSG_DEBUG, "Using SAE auth_alg");
++			algs = WPA_AUTH_ALG_SAE;
++		} else {
++			wpa_dbg(wpa_s, MSG_DEBUG,
++					"SAE enabled, but target BSS does not advertise SAE AKM for RSN");
++		}
++	}
++#endif  /* CONFIG_SAE */
++
++#ifdef CONFIG_SAE
+ 	if (pmksa_cached && algs == WPA_AUTH_ALG_SAE) {
+ 		wpa_dbg(wpa_s, MSG_DEBUG,
+ 			"SAE: Use WPA_AUTH_ALG_OPEN for PMKSA caching attempt");

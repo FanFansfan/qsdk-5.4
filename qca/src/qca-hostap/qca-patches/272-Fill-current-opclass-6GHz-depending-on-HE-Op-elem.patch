@@ -1,0 +1,130 @@
+diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
+index 7043407..82b0eac 100644
+--- a/src/common/ieee802_11_common.c
++++ b/src/common/ieee802_11_common.c
+@@ -1030,15 +1030,8 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
+ 	}
+ 
+ 	if (freq > 5950 && freq <= 7115) {
+-		int bw;
+-		u8 idx = (freq - 5950) / 5;
+-
+-		bw = center_idx_to_bw_6ghz(idx);
+-		if (bw < 0)
+-			return NUM_HOSTAPD_MODES;
+-
+-		*channel = idx;
+-		*op_class = 131 + bw;
++		*op_class = 131 + chanwidth;
++		*channel = (freq - 5950) / 5;
+ 		return HOSTAPD_MODE_IEEE80211A;
+ 	}
+ 
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index b9cada9..61d8d27 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -1114,6 +1114,16 @@ struct ieee80211_vht_operation {
+ 	le16 vht_basic_mcs_set;
+ } STRUCT_PACKED;
+ 
++struct ieee80211_heop_6g_param {
++	u8 primary_channel;       /* HE 6GHz Primary channel number */
++	u8 channel_width:2,       /* HE 6GHz BSS Channel Width */
++	   duplicate_beacon:1,    /* HE 6GHz Duplicate beacon field */
++	   control_reserved:5;    /* Reserved bits */
++	u8 chan_cent_freq_seg0;   /* HE 6GHz Channel Centre Frequency Segmen     t 0 */
++	u8 chan_cent_freq_seg1;   /* HE 6GHz Channel Centre Frequency Segmen     t 1 */
++	u8 minimum_rate;          /* HE 6GHz Minimum Rate */
++} STRUCT_PACKED;
++
+ struct ieee80211_ampe_ie {
+ 	u8 selected_pairwise_suite[4];
+ 	u8 local_nonce[32];
+@@ -1214,6 +1224,11 @@ struct ieee80211_ampe_ie {
+ #define HT_INFO_HT_PARAM_RIFS_MODE			((u8) BIT(3))
+ /* B4..B7 - Reserved */
+ 
++/* HE Operation parameters of the HE Operation element */
++#define HE_INFO_HE_OPERATION_PARAM_VHT_OP		(1 << 9)
++#define HE_INFO_HE_OPERATION_PARAM_CO_HOSTED_BSS	(1 << 8)
++#define HE_INFO_HE_OPERATION_PARAM_6G_INFO		(1 << 6)
++
+ /* HT Protection (B8..B9 of HT Operation Information) */
+ #define HT_PROT_NO_PROTECTION           0
+ #define HT_PROT_NONMEMBER_PROTECTION    1
+@@ -2278,6 +2293,12 @@ struct ieee80211_spatial_reuse {
+ #define HE_OPERATION_BSS_COLOR_DISABLED		((u32) BIT(31))
+ #define HE_OPERATION_BSS_COLOR_OFFSET		24
+ 
++
++#define IEEE80211_6GOP_CHWIDTH_20           0 /* 20MHz Operating Channel width */
++#define IEEE80211_6GOP_CHWIDTH_40           1 /* 40MHz Operating Channel width */
++#define IEEE80211_6GOP_CHWIDTH_80           2 /* 80MHz Operating Channel width */
++#define IEEE80211_6GOP_CHWIDTH_160_80_80    3 /* 160/80+80 MHz Operating Channel width */
++
+ /* Spatial Reuse defines */
+ #define SPATIAL_REUSE_SRP_DISALLOWED		BIT(0)
+ #define SPATIAL_REUSE_NON_SRG_OBSS_PD_SR_DISALLOWED	BIT(1)
+diff --git a/wpa_supplicant/rrm.c b/wpa_supplicant/rrm.c
+index 0b1f67c..38c2388 100644
+--- a/wpa_supplicant/rrm.c
++++ b/wpa_supplicant/rrm.c
+@@ -702,7 +702,9 @@ int wpas_get_op_chan_phy(int freq, const u8 *ies, size_t ies_len,
+ 	int sec_chan = 0, vht = 0;
+ 	struct ieee80211_ht_operation *ht_oper = NULL;
+ 	struct ieee80211_vht_operation *vht_oper = NULL;
+-	u8 seg0, seg1;
++	struct ieee80211_heop_6g_param *he_oper_6g = NULL;
++	struct ieee80211_he_operation  *heop = NULL;
++	u8 seg0, seg1, pos=0;
+ 
+ 	ie = get_ie(ies, ies_len, WLAN_EID_HT_OPERATION);
+ 	if (ie && ie[1] >= sizeof(struct ieee80211_ht_operation)) {
+@@ -745,6 +747,46 @@ int wpas_get_op_chan_phy(int freq, const u8 *ies, size_t ies_len,
+ 		}
+ 	}
+ 
++	ie= get_ie_ext(ies, ies_len, WLAN_EID_EXT_HE_OPERATION);
++	if (ie && ies_len >=6) {
++		heop = (struct ieee80211_he_operation *)(ie);
++		/* Note:: Correctly overwrite the 5G chanwidth if VHT Op
++		 * is present otherwise leave it as filled previously */
++		if(heop->he_oper_params & HE_INFO_HE_OPERATION_PARAM_VHT_OP)
++			pos = pos+3;
++
++		if(heop->he_oper_params &
++		   HE_INFO_HE_OPERATION_PARAM_CO_HOSTED_BSS)
++			pos = pos+1;
++
++		/*Overwite the chanwidth as below only for 6G */
++		if((heop->he_oper_params & HE_INFO_HE_OPERATION_PARAM_6G_INFO)
++		   && (freq >= 5935)) {
++			pos = pos+9;
++			he_oper_6g = (struct ieee80211_heop_6g_param *)
++				      (ie +pos);
++			/* Note: In driver chanwidth =3 and opclass=134 is
++			* for both 160 MHz and 80+80 MHz currently. Adding
++			* the same here.*/
++			switch (he_oper_6g->channel_width) {
++			case IEEE80211_6GOP_CHWIDTH_20:
++				vht = 0;
++				break;
++			case IEEE80211_6GOP_CHWIDTH_40:
++				vht = 1;
++				break;
++			case IEEE80211_6GOP_CHWIDTH_80:
++				vht = 2;
++				break;
++			case IEEE80211_6GOP_CHWIDTH_160_80_80:
++				vht = 3;
++				break;
++			default:
++				vht = CHANWIDTH_USE_HT;
++			}
++		}
++	}
++
+ 	if (ieee80211_freq_to_channel_ext(freq, sec_chan, vht, op_class,
+ 					  chan) == NUM_HOSTAPD_MODES) {
+ 		wpa_printf(MSG_DEBUG,

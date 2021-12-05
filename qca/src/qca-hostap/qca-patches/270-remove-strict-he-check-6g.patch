@@ -1,0 +1,12 @@
+diff --git a/src/common/hw_features_common.c b/src/common/hw_features_common.c
+index 1ad8d7c..f99ebb8 100644
+--- a/src/common/hw_features_common.c
++++ b/src/common/hw_features_common.c
+@@ -389,7 +389,6 @@ int hostapd_set_freq_params(struct hostapd_freq_params *data,
+ 		if (!data->he_enabled) {
+ 			wpa_printf(MSG_ERROR,
+ 				   "Can't set 6 GHz mode - HE isn't enabled");
+-			return -1;
+ 		}
+ 
+ 		if (center_idx_to_bw_6ghz(channel) != 0) {

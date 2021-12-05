@@ -1,0 +1,13 @@
+diff --git a/src/drivers/driver_macsec_qca.c b/src/drivers/driver_macsec_qca.c
+index f4e55d5..05b38d3 100644
+--- a/src/drivers/driver_macsec_qca.c
++++ b/src/drivers/driver_macsec_qca.c
+@@ -461,7 +461,7 @@ static fal_cipher_suite_e macsec_qca_cs_type_get(u64 cs)
+ }
+ 
+ 
+-static int macsec_qca_set_current_cipher_suite(void *priv, u64 cs)
++static int macsec_qca_set_current_cipher_suite(void *priv, uint64_t cs)
+ {
+ 	struct macsec_qca_data *drv = priv;
+ 	fal_cipher_suite_e cs_type;

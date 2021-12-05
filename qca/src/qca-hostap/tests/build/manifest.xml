@@ -1,0 +1,10 @@
+<config>
+  <image_tree>
+    <name>NHSS.QSDK.11.4</name>
+    <build_id>NHSS.QSDK.11.4-07070-P-1</build_id>
+    <branch_point_revision/>
+    <revision>07070</revision>
+    <spin>1</spin>
+    <client>P</client>
+  </image_tree>
+</config>

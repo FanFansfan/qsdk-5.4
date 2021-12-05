@@ -1,0 +1,506 @@
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index 8f77e86..0646967 100644
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -4464,6 +4464,33 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 		}
+ 
+ 		bss->multi_ap = val;
++	} else if (os_strcmp(buf, "multi_ap_profile") == 0) {
++		int val = atoi(pos);
++
++		if (val < 1 || val > 3) {
++			wpa_printf(MSG_ERROR, "Line %d: Invalid multi_ap_profile '%s'",
++				   line, buf);
++			return -1;
++		}
++		bss->multi_ap_profile = val;
++	} else if (os_strcmp(buf, "multi_ap_client_disallow") == 0) {
++		int val = atoi(pos);
++
++		if (val < 0 || val > 3) {
++			wpa_printf(MSG_ERROR, "Line %d: Invalid multi_ap_client_allow '%s'",
++				   line, buf);
++			return -1;
++		}
++		bss->multi_ap_client_disallow = val;
++	} else if (os_strcmp(buf, "multi_ap_vlanid") == 0) {
++		int val = atoi(pos);
++
++		if (val < -1 || val >= MAX_VLAN_ID) {
++			wpa_printf(MSG_ERROR, "Line %d: Invalid multi_ap_vlan_id '%s'",
++				   line, buf);
++			return -1;
++		}
++		bss->multi_ap_vlanid = val;
+ 	} else if (os_strcmp(buf, "rssi_reject_assoc_rssi") == 0) {
+ 		conf->rssi_reject_assoc_rssi = atoi(pos);
+ 	} else if (os_strcmp(buf, "rssi_reject_assoc_timeout") == 0) {
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+index 2f93264..14e0d57 100644
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -166,6 +166,9 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
+ 	/* Default to strict CRL checking. */
+ 	bss->check_crl_strict = 1;
+ 
++	/* Default multi_ap_profile as 2 */
++	bss->multi_ap_profile = 2;
++
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	bss->sae_commit_status = -1;
+ #endif /* CONFIG_TESTING_OPTIONS */
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index b6c90c8..655774e 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -764,9 +764,21 @@ struct hostapd_bss_config {
+ 
+ 	u8 transition_disable;
+ 
+-#define BACKHAUL_BSS 1
+-#define FRONTHAUL_BSS 2
+-	int multi_ap; /* bitmap of BACKHAUL_BSS, FRONTHAUL_BSS */
++	/* backhaul bss is supported */
++#define BACKHAUL_BSS  BIT(0)
++	/* fronthaul bss is supported */
++#define FRONTHAUL_BSS BIT(1)
++	/* bitmap of BACKHAUL_BSS, FRONTHAUL_BSS */
++	int multi_ap;
++	/* multi_ap_profile - multi ap profile default profile is 2 */
++	int multi_ap_profile;
++	/* multi ap profile 1 clients not allowed to connect */
++#define PROFILE1_CLIENT_ASSOC_DISALLOW BIT(0)
++	/* multi ap profile 2 clients not allowed to connect */
++#define PROFILE2_CLIENT_ASSOC_DISALLOW BIT(1)
++	int multi_ap_client_disallow;
++	/* primary vlan id to used in multi_ap*/
++	int multi_ap_vlanid;
+ 
+ #ifdef CONFIG_AIRTIME_POLICY
+ 	unsigned int airtime_weight;
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index e560661..e68145a 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -72,16 +72,27 @@ static void handle_auth(struct hostapd_data *hapd,
+ 
+ u8 * hostapd_eid_multi_ap(struct hostapd_data *hapd, u8 *eid)
+ {
+-	u8 multi_ap_val = 0;
++	struct multi_ap_params multi_ap = {0};
+ 
+ 	if (!hapd->conf->multi_ap)
+ 		return eid;
++
+ 	if (hapd->conf->multi_ap & BACKHAUL_BSS)
+-		multi_ap_val |= MULTI_AP_BACKHAUL_BSS;
++		multi_ap.capability |= MULTI_AP_BACKHAUL_BSS;
+ 	if (hapd->conf->multi_ap & FRONTHAUL_BSS)
+-		multi_ap_val |= MULTI_AP_FRONTHAUL_BSS;
++		multi_ap.capability |= MULTI_AP_FRONTHAUL_BSS;
++
++	if (hapd->conf->multi_ap_client_disallow
++			& PROFILE1_CLIENT_ASSOC_DISALLOW)
++		multi_ap.capability |= MULTI_AP_PROFILE1_BACKHAUL_STA_DISALLOWED;
++	if (hapd->conf->multi_ap_client_disallow
++			& PROFILE2_CLIENT_ASSOC_DISALLOW)
++		multi_ap.capability |= MULTI_AP_PROFILE2_BACKHAUL_STA_DISALLOWED;
++
++	multi_ap.profile = hapd->conf->multi_ap_profile;
++	multi_ap.vlanid = hapd->conf->multi_ap_vlanid;
+ 
+-	return eid + add_multi_ap_ie(eid, 9, multi_ap_val);
++	return eid + add_multi_ap_ie(eid, 9, &multi_ap);
+ }
+ 
+ 
+@@ -2767,37 +2778,67 @@ static u16 check_wmm(struct hostapd_data *hapd, struct sta_info *sta,
+ static u16 check_multi_ap(struct hostapd_data *hapd, struct sta_info *sta,
+ 			  const u8 *multi_ap_ie, size_t multi_ap_len)
+ {
+-	u8 multi_ap_value = 0;
++	struct multi_ap_params multi_ap = {0};
++	u16 status = WLAN_STATUS_SUCCESS;
++
++	/* default profile is 1, when profile subelement is not present in IE */
++	multi_ap.profile = 1;
+ 
+ 	sta->flags &= ~WLAN_STA_MULTI_AP;
+ 
+ 	if (!hapd->conf->multi_ap)
+ 		return WLAN_STATUS_SUCCESS;
+ 
+-	if (multi_ap_ie) {
+-		const u8 *multi_ap_subelem;
+-
+-		multi_ap_subelem = get_ie(multi_ap_ie + 4,
+-					  multi_ap_len - 4,
+-					  MULTI_AP_SUB_ELEM_TYPE);
+-		if (multi_ap_subelem && multi_ap_subelem[1] == 1) {
+-			multi_ap_value = multi_ap_subelem[2];
+-		} else {
++	if (!multi_ap_ie) {
++		if(!(hapd->conf->multi_ap & FRONTHAUL_BSS)) {
+ 			hostapd_logger(hapd, sta->addr,
+-				       HOSTAPD_MODULE_IEEE80211,
+-				       HOSTAPD_LEVEL_INFO,
+-				       "Multi-AP IE has missing or invalid Multi-AP subelement");
+-			return WLAN_STATUS_INVALID_IE;
++					HOSTAPD_MODULE_IEEE80211,
++					HOSTAPD_LEVEL_INFO,
++					"Non-Multi-AP STA tries to associate with backhaul-only BSS");
++			return WLAN_STATUS_ASSOC_DENIED_UNSPEC;
+ 		}
++		return WLAN_STATUS_SUCCESS;
+ 	}
+ 
+-	if (multi_ap_value && multi_ap_value != MULTI_AP_BACKHAUL_STA)
++	if (multi_ap_len < 7) {
++		hostapd_logger(hapd, sta->addr,
++				HOSTAPD_MODULE_IEEE80211,
++				HOSTAPD_LEVEL_INFO,
++				"Multi-AP IE invalid length %zd", multi_ap_len);
++		return WLAN_STATUS_INVALID_IE;
++	}
++	
++	status = check_multi_ap_ie(multi_ap_ie+4, multi_ap_len-4, &multi_ap); 
++	if (status != WLAN_STATUS_SUCCESS)
++		return status;
++	
++	if (multi_ap.capability && multi_ap.capability != MULTI_AP_BACKHAUL_STA)
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_IEEE80211,
+-			       HOSTAPD_LEVEL_INFO,
+-			       "Multi-AP IE with unexpected value 0x%02x",
+-			       multi_ap_value);
++				HOSTAPD_LEVEL_INFO,
++				"Multi-AP IE with unexpected value 0x%02x",
++				multi_ap.capability);
++
++	if (hapd->conf->multi_ap_client_disallow) {
++		if (multi_ap.profile == MULTI_AP_PROFILE_01 &&
++				(hapd->conf->multi_ap_client_disallow &
++				 PROFILE1_CLIENT_ASSOC_DISALLOW)) {
++			hostapd_logger(hapd, sta->addr,
++					HOSTAPD_MODULE_IEEE80211,
++					HOSTAPD_LEVEL_INFO,
++					"Multi ap profile 1 clients not allowed");
++			return WLAN_STATUS_ASSOC_DENIED_UNSPEC;
++		} else if (multi_ap.profile >= MULTI_AP_PROFILE_02 &&
++				(hapd->conf->multi_ap_client_disallow &
++				 PROFILE2_CLIENT_ASSOC_DISALLOW)) {
++			hostapd_logger(hapd, sta->addr,
++					HOSTAPD_MODULE_IEEE80211,
++					HOSTAPD_LEVEL_INFO,
++					"Multi ap profile 2 clients not allowed");
++			return WLAN_STATUS_ASSOC_DENIED_UNSPEC;
++		}
++	}
+ 
+-	if (!(multi_ap_value & MULTI_AP_BACKHAUL_STA)) {
++	if (!(multi_ap.capability & MULTI_AP_BACKHAUL_STA)) {
+ 		if (hapd->conf->multi_ap & FRONTHAUL_BSS)
+ 			return WLAN_STATUS_SUCCESS;
+ 
+diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
+index c0c569b..7043407 100644
+--- a/src/common/ieee802_11_common.c
++++ b/src/common/ieee802_11_common.c
+@@ -2011,21 +2011,107 @@ size_t mbo_add_ie(u8 *buf, size_t len, const u8 *attr, size_t attr_len)
+ }
+ 
+ 
+-size_t add_multi_ap_ie(u8 *buf, size_t len, u8 value)
++u16 check_multi_ap_ie(const u8 *multi_ap_ie, size_t multi_ap_len,
++				struct multi_ap_params* multi_ap)
+ {
++	const struct element *elem;
++	const u8 *start = multi_ap_ie;
++	const u16 len = multi_ap_len;
++
++	for_each_element(elem, start, len) {
++		u8 id = elem->id, elen = elem->datalen;
++                const u8 *pos = elem->data;
++
++                switch (id) {
++			case MULTI_AP_SUB_ELEM_TYPE:
++				if (elen == 1) {
++					multi_ap->capability = *pos;
++				} else {
++					wpa_printf(MSG_DEBUG,
++						"Multi-AP invalid Multi-AP subelement");
++					return WLAN_STATUS_INVALID_IE;
++				}
++				break;
++			case MULTI_AP_PROFILE_SUB_ELEM_ID:
++				if (elen == 1) {
++					multi_ap->profile = *pos;
++					if (multi_ap->profile > MULTI_AP_PROFILE_MAX) {
++						wpa_printf(MSG_DEBUG,
++							"Multi-AP IE with invalid profile 0x%02x",
++							multi_ap->profile);
++						return WLAN_STATUS_ASSOC_DENIED_UNSPEC;
++					}
++				} else {
++					wpa_printf(MSG_DEBUG,
++					       "Multi-AP IE invalid Multi-AP profile element");
++					return WLAN_STATUS_INVALID_IE;
++				}
++				break;
++			case MULTI_AP_VLAN_SUB_ELEM_ID:
++				if (multi_ap->profile < MULTI_AP_PROFILE_02 ||
++					multi_ap->profile > MULTI_AP_PROFILE_MAX) {
++					wpa_printf(MSG_DEBUG,
++					       "Multi-AP IE invalid profile to read VLAN IE");
++					return WLAN_STATUS_INVALID_IE;
++				}
++				if (elen == 2) {
++					multi_ap->vlanid = WPA_GET_LE16(pos);
++				} else {
++					wpa_printf(MSG_DEBUG,
++					       "Multi-AP IE invalid Multi-AP vlan element");
++					return WLAN_STATUS_INVALID_IE;
++				}
++				break;
++			default:
++				wpa_printf(MSG_DEBUG,
++				       "Multi-AP IE unknown Multi-AP subelement");
++				return WLAN_STATUS_INVALID_IE;
++		}
++	}
++	if (!for_each_element_completed(elem, start, len)) {
++		wpa_printf(MSG_DEBUG,
++				"Multi AP IE parse failed @%d",
++				(int) (start + len - (const u8 *) elem));
++		wpa_hexdump(MSG_MSGDUMP, "IEs", start, len);
++	}
++	return WLAN_STATUS_SUCCESS;
++}
++size_t add_multi_ap_ie(u8 *buf, size_t len, struct multi_ap_params* multi_ap)
++{
++	struct multi_ie_hdr *ie_hdr;
+ 	u8 *pos = buf;
+ 
+ 	if (len < 9)
+ 		return 0;
+ 
+-	*pos++ = WLAN_EID_VENDOR_SPECIFIC;
+-	*pos++ = 7; /* len */
+-	WPA_PUT_BE24(pos, OUI_WFA);
+-	pos += 3;
+-	*pos++ = MULTI_AP_OUI_TYPE;
+-	*pos++ = MULTI_AP_SUB_ELEM_TYPE;
+-	*pos++ = 1; /* len */
+-	*pos++ = value;
++	ie_hdr = (struct multi_ie_hdr *) buf;
++
++	ie_hdr->id = WLAN_EID_VENDOR_SPECIFIC;
++	ie_hdr->length = 7;
++	WPA_PUT_BE24(ie_hdr->oui, OUI_WFA);
++	ie_hdr->out_type = MULTI_AP_OUI_TYPE;
++
++	ie_hdr->multi_ap_ext_ie[0] = MULTI_AP_SUB_ELEM_TYPE;
++	ie_hdr->multi_ap_ext_ie[1] = 1;
++	ie_hdr->multi_ap_ext_ie[2] = multi_ap->capability;
++	pos += (sizeof(struct multi_ie_hdr));
++
++	/* Add Multi-AP profile element only for R2 configuraiton */
++	if (multi_ap->profile > 1) {
++		ie_hdr->length += 3;
++		*pos++ = MULTI_AP_PROFILE_SUB_ELEM_ID;
++		*pos++ = 1;
++		*pos++ = multi_ap->profile;
++
++		/* Add Multi-AP 802.1Q Setting TLV only for BHBSS */
++		if (multi_ap->vlanid && (multi_ap->capability & MULTI_AP_BACKHAUL_BSS)) {
++			ie_hdr->length += 4;
++			*pos++ = MULTI_AP_VLAN_SUB_ELEM_ID;
++			*pos++ = 2;
++			WPA_PUT_LE16(pos, multi_ap->vlanid);
++			pos += 2;
++		}
++	}
+ 
+ 	return pos - buf;
+ }
+diff --git a/src/common/ieee802_11_common.h b/src/common/ieee802_11_common.h
+index 0ddba06..95bf1fc 100644
+--- a/src/common/ieee802_11_common.h
++++ b/src/common/ieee802_11_common.h
+@@ -46,6 +46,20 @@ struct frag_ies_info {
+ 	u8 last_eid_ext;
+ };
+ 
++struct multi_ap_params {
++	u8 capability;
++	u8 profile;
++	u16 vlanid;
++};
++
++struct multi_ie_hdr {
++	u8 id;
++	u8 length;
++	u8 oui[3];
++	u8 out_type;
++	u8 multi_ap_ext_ie[3];
++};
++
+ /* Parsed Information Elements */
+ struct ieee802_11_elems {
+ 	const u8 *ssid;
+@@ -246,7 +260,9 @@ const u8 * get_vendor_ie(const u8 *ies, size_t len, u32 vendor_type);
+ 
+ size_t mbo_add_ie(u8 *buf, size_t len, const u8 *attr, size_t attr_len);
+ 
+-size_t add_multi_ap_ie(u8 *buf, size_t len, u8 value);
++u16 check_multi_ap_ie(const u8 *multi_ap_ie, size_t multi_ap_len,
++				struct multi_ap_params* multi_ap);
++size_t add_multi_ap_ie(u8 *buf, size_t len, struct multi_ap_params* multi_ap);
+ 
+ struct country_op_class {
+ 	u8 country_op_class;
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index 9ab4271..b9cada9 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -1331,10 +1331,20 @@ struct ieee80211_ampe_ie {
+ #define SAE_PK_OUI_TYPE 0x1f
+ 
+ #define MULTI_AP_SUB_ELEM_TYPE 0x06
+-#define MULTI_AP_TEAR_DOWN BIT(4)
+-#define MULTI_AP_FRONTHAUL_BSS BIT(5)
+-#define MULTI_AP_BACKHAUL_BSS BIT(6)
+-#define MULTI_AP_BACKHAUL_STA BIT(7)
++#define MULTI_AP_PROFILE_SUB_ELEM_ID 0x07
++#define MULTI_AP_VLAN_SUB_ELEM_ID    0x08
++
++#define MULTI_AP_PROFILE2_BACKHAUL_STA_DISALLOWED BIT(2)
++#define MULTI_AP_PROFILE1_BACKHAUL_STA_DISALLOWED BIT(3)
++#define MULTI_AP_TEAR_DOWN                        BIT(4)
++#define MULTI_AP_FRONTHAUL_BSS                    BIT(5)
++#define MULTI_AP_BACKHAUL_BSS                     BIT(6)
++#define MULTI_AP_BACKHAUL_STA                     BIT(7)
++
++#define MULTI_AP_PROFILE_01          0x01
++#define MULTI_AP_PROFILE_02          0x02
++/* Add the last profile */
++#define MULTI_AP_PROFILE_MAX         0x03
+ 
+ #define WMM_OUI_TYPE 2
+ #define WMM_OUI_SUBTYPE_INFORMATION_ELEMENT 0
+diff --git a/wpa_supplicant/config.c b/wpa_supplicant/config.c
+index 2bde113..f675acb 100644
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
+@@ -2582,6 +2582,7 @@ static const struct parse_data ssid_fields[] = {
+ 	{ INT_RANGE(owe_ptk_workaround, 0, 1) },
+ 	{ INT_RANGE(multi_ap_backhaul_sta, 0, 1) },
+ 	{ INT_RANGE(ft_eap_pmksa_caching, 0, 1) },
++	{ INT_RANGE(multi_ap_profile, 1, 3) },
+ 	{ INT_RANGE(beacon_prot, 0, 1) },
+ 	{ INT_RANGE(transition_disable, 0, 255) },
+ 	{ INT_RANGE(sae_pk, 0, 2) },
+diff --git a/wpa_supplicant/config_file.c b/wpa_supplicant/config_file.c
+index 2210585..6a087af 100644
+--- a/wpa_supplicant/config_file.c
++++ b/wpa_supplicant/config_file.c
+@@ -981,6 +981,7 @@ static void wpa_config_write_network(FILE *f, struct wpa_ssid *ssid)
+ 	INT(owe_ptk_workaround);
+ 	INT(multi_ap_backhaul_sta);
+ 	INT(ft_eap_pmksa_caching);
++	INT(multi_ap_profile);
+ 	INT(beacon_prot);
+ 	INT(transition_disable);
+ 	INT(sae_pk);
+diff --git a/wpa_supplicant/config_ssid.h b/wpa_supplicant/config_ssid.h
+index 62c171e..a01679f 100644
+--- a/wpa_supplicant/config_ssid.h
++++ b/wpa_supplicant/config_ssid.h
+@@ -1118,6 +1118,11 @@ struct wpa_ssid {
+ 	int ft_eap_pmksa_caching;
+ 
+ 	/**
++	 * multi_ap_profile
++	 */
++	int multi_ap_profile;
++
++	/**
+ 	 * beacon_prot - Whether Beacon protection is enabled
+ 	 *
+ 	 * This depends on management frame protection (ieee80211w) being
+diff --git a/wpa_supplicant/events.c b/wpa_supplicant/events.c
+index 667bb39..4710528 100644
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -2577,6 +2577,11 @@ static void multi_ap_process_assoc_resp(struct wpa_supplicant *wpa_s,
+ 	struct ieee802_11_elems elems;
+ 	const u8 *map_sub_elem, *pos;
+ 	size_t len;
++	struct multi_ap_params multi_ap = {0};
++	u16 status = 0;
++
++	/* default profile is 1, when profile subelement is not present in IE */
++	multi_ap.profile = 1;
+ 
+ 	wpa_s->multi_ap_ie = 0;
+ 
+@@ -2592,8 +2597,13 @@ static void multi_ap_process_assoc_resp(struct wpa_supplicant *wpa_s,
+ 	if (!map_sub_elem || map_sub_elem[1] < 1)
+ 		return;
+ 
+-	wpa_s->multi_ap_backhaul = !!(map_sub_elem[2] & MULTI_AP_BACKHAUL_BSS);
+-	wpa_s->multi_ap_fronthaul = !!(map_sub_elem[2] &
++	status = check_multi_ap_ie(pos, len, &multi_ap);
++
++	if (status != WLAN_STATUS_SUCCESS) {
++		return;
++	}
++	wpa_s->multi_ap_backhaul = !!(multi_ap.capability & MULTI_AP_BACKHAUL_BSS);
++	wpa_s->multi_ap_fronthaul = !!(multi_ap.capability &
+ 				       MULTI_AP_FRONTHAUL_BSS);
+ 	wpa_s->multi_ap_ie = 1;
+ }
+diff --git a/wpa_supplicant/sme.c b/wpa_supplicant/sme.c
+index f45bab2..6fbe247 100644
+--- a/wpa_supplicant/sme.c
++++ b/wpa_supplicant/sme.c
+@@ -1879,12 +1879,16 @@ pfs_fail:
+ 
+ 	if (ssid && ssid->multi_ap_backhaul_sta) {
+ 		size_t multi_ap_ie_len;
++		struct multi_ap_params multi_ap = {0};
++
++		multi_ap.capability = MULTI_AP_BACKHAUL_STA;
++		multi_ap.profile = wpa_s->current_ssid->multi_ap_profile;
++		multi_ap.vlanid = 0;
+ 
+ 		multi_ap_ie_len = add_multi_ap_ie(
+ 			wpa_s->sme.assoc_req_ie + wpa_s->sme.assoc_req_ie_len,
+ 			sizeof(wpa_s->sme.assoc_req_ie) -
+-			wpa_s->sme.assoc_req_ie_len,
+-			MULTI_AP_BACKHAUL_STA);
++			wpa_s->sme.assoc_req_ie_len, &multi_ap);
+ 		if (multi_ap_ie_len == 0) {
+ 			wpa_printf(MSG_ERROR,
+ 				   "Multi-AP: Failed to build Multi-AP IE");
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index 6565a56..3d44805 100644
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -3183,10 +3183,15 @@ pfs_fail:
+ 
+ 	if (ssid->multi_ap_backhaul_sta) {
+ 		size_t multi_ap_ie_len;
++		struct multi_ap_params multi_ap = {0};
++
++		multi_ap.capability = MULTI_AP_BACKHAUL_STA;
++		multi_ap.profile = ssid->multi_ap_profile;
++		multi_ap.vlanid = 0;
+ 
+ 		multi_ap_ie_len = add_multi_ap_ie(wpa_ie + wpa_ie_len,
+ 						  max_wpa_ie_len - wpa_ie_len,
+-						  MULTI_AP_BACKHAUL_STA);
++						  &multi_ap);
+ 		if (multi_ap_ie_len == 0) {
+ 			wpa_printf(MSG_ERROR,
+ 				   "Multi-AP: Failed to build Multi-AP IE");

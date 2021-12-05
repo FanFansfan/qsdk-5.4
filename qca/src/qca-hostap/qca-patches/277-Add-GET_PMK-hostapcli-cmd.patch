@@ -1,0 +1,25 @@
+diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
+index 42edb7b..23b2719 100644
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -1151,6 +1151,11 @@ static int hostapd_cli_cmd_fst(struct wpa_ctrl *ctrl, int argc, char *argv[])
+ }
+ #endif /* CONFIG_FST */
+ 
++static int hostapd_cli_cmd_get_pmk(struct wpa_ctrl *ctrl,
++				   int argc, char *argv[])
++{
++	return hostapd_cli_cmd(ctrl, "GET_PMK", 1, argc, argv);
++}
+ 
+ static int hostapd_cli_cmd_chan_switch(struct wpa_ctrl *ctrl,
+ 				       int argc, char *argv[])
+@@ -1601,6 +1606,8 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
+ 	{ "send_qos_map_conf", hostapd_cli_cmd_send_qos_map_conf,
+ 	  hostapd_complete_stations,
+ 	  "<addr> = send QoS Map Configure frame" },
++	{ "get_pmk", hostapd_cli_cmd_get_pmk, NULL,
++	  "<macaddr> = get STA PMK" },
+ 	{ "chan_switch", hostapd_cli_cmd_chan_switch, NULL,
+ 	  "<cs_count> <freq> [sec_channel_offset=] [center_freq1=]\n"
+ 	  "  [center_freq2=] [bandwidth=] [blocktx] [ht|vht]\n"

@@ -1,0 +1,317 @@
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index 6babfe8..5632e29 100644
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -2747,6 +2747,20 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 		bss->radius->acct_server->shared_secret_len = len;
+ 	} else if (os_strcmp(buf, "radius_retry_primary_interval") == 0) {
+ 		bss->radius->retry_primary_interval = atoi(pos);
++	} else if (os_strcmp(buf, "radius_server_retries") == 0) {
++		bss->radius->radius_server_retries = atoi(pos);
++		if((bss->radius->radius_server_retries < 0 ) || (bss->radius->radius_server_retries > 10 )){
++			wpa_printf(MSG_ERROR, "Line %d: radius->radius_server_retries '%d'",
++				line,bss->radius->radius_server_retries);
++			return 1;
++		}
++	}else if (os_strcmp(buf, "radius_max_retry_wait") == 0) {
++		bss->radius->radius_max_retry_wait = atoi(pos);
++		if((bss->radius->radius_max_retry_wait < 1 ) || (bss->radius->radius_max_retry_wait > 120 )){
++			wpa_printf(MSG_ERROR, "Line %d: radius->radius_max_retry_wait '%d'",
++				line,bss->radius->radius_max_retry_wait);
++			return 1;
++		}
+ 	} else if (os_strcmp(buf, "radius_acct_interim_interval") == 0) {
+ 		bss->acct_interim_interval = atoi(pos);
+ 	} else if (os_strcmp(buf, "radius_request_cui") == 0) {
+@@ -2966,6 +2980,13 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 	} else if (os_strcmp(buf, "peerkey") == 0) {
+ 		wpa_printf(MSG_INFO,
+ 			   "Line %d: Obsolete peerkey parameter ignored", line);
++        } else if (os_strcmp(buf, "identity_request_retry_interval") == 0) {
++                bss->identity_request_retry_interval = atoi(pos);
++                if((bss->identity_request_retry_interval < 0 ) || (bss->identity_request_retry_interval > 200 )){
++                        wpa_printf(MSG_ERROR, "Line %d: Invalid identity_request_retry_interval '%d'",
++                                line,bss->identity_request_retry_interval);
++                        return 1;
++                }
+ #ifdef CONFIG_IEEE80211R_AP
+ 	} else if (os_strcmp(buf, "mobility_domain") == 0) {
+ 		if (os_strlen(pos) != 2 * MOBILITY_DOMAIN_ID_LEN ||
+diff --git a/src/ap/ap_config.c b/src/ap/ap_config.c
+index 1c6b4a0..2f93264 100644
+--- a/src/ap/ap_config.c
++++ b/src/ap/ap_config.c
+@@ -24,6 +24,8 @@
+ #include "airtime_policy.h"
+ #include "ap_config.h"
+ 
++#define RADIUS_CLIENT_MAX_RETRIES 10
++#define RADIUS_CLIENT_MAX_WAIT 120
+ 
+ static void hostapd_config_free_vlan(struct hostapd_bss_config *bss)
+ {
+@@ -109,6 +111,7 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
+ 
+ 	/* Set to -1 as defaults depends on HT in setup */
+ 	bss->wmm_enabled = -1;
++	bss->identity_request_retry_interval = 0;
+ 
+ #ifdef CONFIG_IEEE80211R_AP
+ 	bss->ft_over_ds = 1;
+@@ -120,6 +123,8 @@ void hostapd_config_defaults_bss(struct hostapd_bss_config *bss)
+ #endif /* CONFIG_IEEE80211R_AP */
+ 
+ 	bss->radius_das_time_window = 300;
++	bss->radius->radius_server_retries = RADIUS_CLIENT_MAX_RETRIES;
++	bss->radius->radius_max_retry_wait = RADIUS_CLIENT_MAX_WAIT;
+ 
+ 	bss->sae_anti_clogging_threshold = 5;
+ 	bss->sae_sync = 5;
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index b705c37..0855dc9 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -378,6 +378,7 @@ struct hostapd_bss_config {
+ 	int rsn_pairwise;
+ 	int rsn_preauth;
+ 	char *rsn_preauth_interfaces;
++	int identity_request_retry_interval;
+ 
+ #ifdef CONFIG_IEEE80211R_AP
+ 	/* IEEE 802.11r - Fast BSS Transition */
+diff --git a/src/ap/ieee802_1x.c b/src/ap/ieee802_1x.c
+index ee095f6..5eccc64 100644
+--- a/src/ap/ieee802_1x.c
++++ b/src/ap/ieee802_1x.c
+@@ -2447,6 +2447,9 @@ int ieee802_1x_init(struct hostapd_data *hapd)
+ 	conf.eap_req_id_text_len = hapd->conf->eap_req_id_text_len;
+ 	conf.erp_send_reauth_start = hapd->conf->erp_send_reauth_start;
+ 	conf.erp_domain = hapd->conf->erp_domain;
++	if (hapd->conf->identity_request_retry_interval) {
++		conf.identity_request_retry_interval = hapd->conf->identity_request_retry_interval;
++	}
+ 
+ 	os_memset(&cb, 0, sizeof(cb));
+ 	cb.eapol_send = ieee802_1x_eapol_send;
+diff --git a/src/ap/wpa_auth.h b/src/ap/wpa_auth.h
+index 5f9df9c..74f3df6 100644
+--- a/src/ap/wpa_auth.h
++++ b/src/ap/wpa_auth.h
+@@ -185,6 +185,7 @@ struct wpa_auth_config {
+ 	int rsn_pairwise;
+ 	int rsn_preauth;
+ 	int eapol_version;
++	int identity_request_retry_interval;
+ 	int wmm_enabled;
+ 	int wmm_uapsd;
+ 	int disable_pmksa_caching;
+diff --git a/src/ap/wpa_auth_glue.c b/src/ap/wpa_auth_glue.c
+index c01654f..d6454c3 100644
+--- a/src/ap/wpa_auth_glue.c
++++ b/src/ap/wpa_auth_glue.c
+@@ -67,6 +67,7 @@ static void hostapd_wpa_auth_conf(struct hostapd_bss_config *conf,
+ 	wconf->ocv = conf->ocv;
+ #endif /* CONFIG_OCV */
+ 	wconf->okc = conf->okc;
++	wconf->identity_request_retry_interval = conf->identity_request_retry_interval;
+ 	wconf->ieee80211w = conf->ieee80211w;
+ 	wconf->beacon_prot = conf->beacon_prot;
+ 	wconf->group_mgmt_cipher = conf->group_mgmt_cipher;
+diff --git a/src/ap/wpa_auth_i.h b/src/ap/wpa_auth_i.h
+index ba08ac2..1e0824e 100644
+--- a/src/ap/wpa_auth_i.h
++++ b/src/ap/wpa_auth_i.h
+@@ -156,6 +156,7 @@ struct wpa_state_machine {
+ 	size_t fils_key_auth_len;
+ 	unsigned int fils_completed:1;
+ #endif /* CONFIG_FILS */
++	int identity_request_retry_interval;
+ 
+ #ifdef CONFIG_DPP2
+ 	struct wpabuf *dpp_z;
+@@ -236,6 +237,7 @@ struct wpa_authenticator {
+ #ifdef CONFIG_P2P
+ 	struct bitfield *ip_pool;
+ #endif /* CONFIG_P2P */
++	int identity_request_retry_interval;
+ };
+ 
+ 
+diff --git a/src/ap/wpa_auth_ie.c b/src/ap/wpa_auth_ie.c
+index a7e6354..e4f230b 100644
+--- a/src/ap/wpa_auth_ie.c
++++ b/src/ap/wpa_auth_ie.c
+@@ -977,6 +977,9 @@ wpa_validate_wpa_ie(struct wpa_authenticator *wpa_auth,
+ 	}
+ 	os_memcpy(sm->wpa_ie, wpa_ie, wpa_ie_len);
+ 	sm->wpa_ie_len = wpa_ie_len;
++	if(wpa_auth->conf.identity_request_retry_interval){
++		sm->identity_request_retry_interval = wpa_auth->conf.identity_request_retry_interval;
++	}
+ 
+ 	if (rsnxe && rsnxe_len) {
+ 		if (!sm->rsnxe || sm->rsnxe_len < rsnxe_len) {
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index 4d3037e..8dc9988 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -924,6 +924,10 @@ struct ieee80211_mgmt {
+ 			 * FH Params, DS Params, CF Params, IBSS Params, TIM */
+ 			u8 variable[];
+ 		} STRUCT_PACKED beacon;
++		struct {
++			/* only variable items: SSID, Supported rates */
++			u8 variable[0];
++		} STRUCT_PACKED probe_req;
+ 		/* probe_req: only variable items: SSID, Supported rates */
+ 		struct {
+ 			u8 timestamp[8];
+diff --git a/src/eap_peer/eap_i.h b/src/eap_peer/eap_i.h
+index f43891e..d0b709e 100644
+--- a/src/eap_peer/eap_i.h
++++ b/src/eap_peer/eap_i.h
+@@ -385,6 +385,8 @@ struct eap_sm {
+ 	unsigned int use_machine_cred:1;
+ 
+ 	struct dl_list erp_keys; /* struct eap_erp_key */
++	int identity_request_retry_interval;
++
+ };
+ 
+ const u8 * eap_get_config_identity(struct eap_sm *sm, size_t *len);
+diff --git a/src/eap_server/eap.h b/src/eap_server/eap.h
+index 61032cc..3c8f327 100644
+--- a/src/eap_server/eap.h
++++ b/src/eap_server/eap.h
+@@ -255,6 +255,7 @@ struct eap_config {
+ 	int erp;
+ 	unsigned int tls_session_lifetime;
+ 	unsigned int tls_flags;
++	int identity_request_retry_interval;
+ 
+ 	unsigned int max_auth_rounds;
+ 	unsigned int max_auth_rounds_short;
+diff --git a/src/eap_server/eap_i.h b/src/eap_server/eap_i.h
+index 28bb564..8e2203a 100644
+--- a/src/eap_server/eap_i.h
++++ b/src/eap_server/eap_i.h
+@@ -188,6 +188,7 @@ struct eap_sm {
+ 
+ 	bool initiate_reauth_start_sent;
+ 	bool try_initiate_reauth;
++        int identity_request_retry_interval;
+ 
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	u32 tls_test_flags;
+diff --git a/src/eap_server/eap_server.c b/src/eap_server/eap_server.c
+index 0b7a5b9..51e9287 100644
+--- a/src/eap_server/eap_server.c
++++ b/src/eap_server/eap_server.c
+@@ -309,9 +309,14 @@ SM_STATE(EAP, IDLE)
+ {
+ 	SM_ENTRY(EAP, IDLE);
+ 
+-	sm->eap_if.retransWhile = eap_sm_calculateTimeout(
+-		sm, sm->retransCount, sm->eap_if.eapSRTT, sm->eap_if.eapRTTVAR,
+-		sm->methodTimeout);
++	if(sm->identity_request_retry_interval) {
++		sm->eap_if.retransWhile = sm->identity_request_retry_interval ;
++	} else {
++		sm->eap_if.retransWhile = eap_sm_calculateTimeout(
++			sm, sm->retransCount, sm->eap_if.eapSRTT, sm->eap_if.eapRTTVAR,
++			sm->methodTimeout);
++	}
++	wpa_printf(MSG_DEBUG, "identity_request_retry_interval (%d) ",sm->eap_if.retransWhile);
+ }
+ 
+ 
+@@ -1008,9 +1013,14 @@ SM_STATE(EAP, IDLE2)
+ {
+ 	SM_ENTRY(EAP, IDLE2);
+ 
+-	sm->eap_if.retransWhile = eap_sm_calculateTimeout(
+-		sm, sm->retransCount, sm->eap_if.eapSRTT, sm->eap_if.eapRTTVAR,
+-		sm->methodTimeout);
++	if(sm->identity_request_retry_interval) {
++		sm->eap_if.retransWhile = sm->identity_request_retry_interval ;
++	} else {
++		sm->eap_if.retransWhile = eap_sm_calculateTimeout(
++			sm, sm->retransCount, sm->eap_if.eapSRTT, sm->eap_if.eapRTTVAR,
++			sm->methodTimeout);
++	}
++	wpa_printf(MSG_DEBUG, "identity_request_retry_interval (%d) ",sm->eap_if.retransWhile);
+ }
+ 
+ 
+@@ -1870,6 +1880,10 @@ struct eap_sm * eap_server_sm_init(void *eapol_ctx,
+ 		sm->assoc_p2p_ie = wpabuf_dup(sess->assoc_p2p_ie);
+ 	if (sess->peer_addr)
+ 		os_memcpy(sm->peer_addr, sess->peer_addr, ETH_ALEN);
++	if (conf->identity_request_retry_interval) {
++		sm->identity_request_retry_interval = conf->identity_request_retry_interval;
++	}
++
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	sm->tls_test_flags = sess->tls_test_flags;
+ #endif /* CONFIG_TESTING_OPTIONS */
+diff --git a/src/eapol_auth/eapol_auth_sm.c b/src/eapol_auth/eapol_auth_sm.c
+index 1c11cb6..57a81b5 100644
+--- a/src/eapol_auth/eapol_auth_sm.c
++++ b/src/eapol_auth/eapol_auth_sm.c
+@@ -1179,6 +1179,7 @@ static int eapol_auth_conf_clone(struct eapol_auth_config *dst,
+ #ifdef CONFIG_WEP
+ 	dst->individual_wep_key_len = src->individual_wep_key_len;
+ #endif /* CONFIG_WEP */
++        dst->identity_request_retry_interval = src->identity_request_retry_interval;
+ 	os_free(dst->eap_req_id_text);
+ 	if (src->eap_req_id_text) {
+ 		dst->eap_req_id_text = os_memdup(src->eap_req_id_text,
+diff --git a/src/eapol_auth/eapol_auth_sm.h b/src/eapol_auth/eapol_auth_sm.h
+index 5fe89c6..25ee99f 100644
+--- a/src/eapol_auth/eapol_auth_sm.h
++++ b/src/eapol_auth/eapol_auth_sm.h
+@@ -23,6 +23,7 @@ struct eapol_auth_config {
+ 	size_t eap_req_id_text_len;
+ 	int erp_send_reauth_start;
+ 	char *erp_domain; /* a copy of this will be allocated */
++	int identity_request_retry_interval;
+ 
+ 	/* Opaque context pointer to owner data for callback functions */
+ 	void *ctx;
+diff --git a/src/radius/radius_client.c b/src/radius/radius_client.c
+index 2b7a604..53d7b28 100644
+--- a/src/radius/radius_client.c
++++ b/src/radius/radius_client.c
+@@ -480,9 +480,15 @@ static int radius_client_retransmit(struct radius_client_data *radius,
+ 
+ 	entry->next_try = now + entry->next_wait;
+ 	entry->next_wait *= 2;
+-	if (entry->next_wait > RADIUS_CLIENT_MAX_WAIT)
+-		entry->next_wait = RADIUS_CLIENT_MAX_WAIT;
+-
++	if (entry->next_wait > conf->radius_max_retry_wait){
++		entry->next_wait = conf->radius_max_retry_wait;
++		entry->next_try = now + entry->next_wait;
++	}
++	wpa_printf(MSG_INFO, "RADIUS: Retry attempts :%d Maximum retry attempts :%d ",entry->attempts,conf->radius_server_retries);
++	if (entry->attempts >= conf->radius_server_retries) {
++		wpa_printf(MSG_INFO, "RADIUS: Removing un-ACKed message due to too many failed retransmit attempts");
++		return 1;
++	}
+ 	return 0;
+ }
+ 
+diff --git a/src/radius/radius_client.h b/src/radius/radius_client.h
+index 8ca0874..f5b41c2 100644
+--- a/src/radius/radius_client.h
++++ b/src/radius/radius_client.h
+@@ -174,6 +174,9 @@ struct hostapd_radius_servers {
+ 	 * force_client_addr - Whether to force client (local) address
+ 	 */
+ 	int force_client_addr;
++
++	int radius_server_retries;
++	int radius_max_retry_wait;
+ };
+ 
+ 

@@ -1,0 +1,127 @@
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+index be0e9ee..12f147b 100644
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -851,6 +851,15 @@ static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
+ 				wpabuf_len(hapd->dpp_auth->resp_msg));
+ }
+ 
++static void hostapd_map_handle_connector_config_obj(struct hostapd_data *hapd,
++						    struct dpp_authentication *auth,
++						    struct dpp_config_obj *conf)
++{
++	if (conf->connector) {
++		wpa_msg(hapd->msg_ctx, MSG_INFO, DPP_MAP_EVENT_CONNECTOR "%s",
++			conf->connector);
++	}
++}
+ 
+ static void hostapd_dpp_handle_config_obj(struct hostapd_data *hapd,
+ 					  struct dpp_authentication *auth,
+@@ -2091,6 +2100,7 @@ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd)
+ 	struct dpp_authentication *auth;
+ 	int ret = -1;
+ 	char *curve = NULL;
++	char *map_netaccess_jwk = NULL;
+ 
+ 	auth = dpp_alloc_auth(hapd->iface->interfaces->dpp, hapd->msg_ctx);
+ 	if (!auth)
+@@ -2100,10 +2110,16 @@ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd)
+ 		auth->dpp_map = hapd->conf->dpp_map;
+ 
+ 	curve = get_param(cmd, " curve=");
++	map_netaccess_jwk = get_param(cmd, " map_netaccess_jwk=");
++	if (map_netaccess_jwk) {
++		auth->map_netaccess_jwk = wpabuf_alloc_copy(map_netaccess_jwk,
++						os_strlen(map_netaccess_jwk));
++	}
+ 
+ 	hostapd_dpp_set_testing_options(hapd, auth);
+ 	if (dpp_set_configurator(auth, cmd) == 0 &&
+-	    dpp_configurator_own_config(auth, curve, 1) == 0) {
++	    dpp_configurator_own_config(auth, curve, 1) == 0 &&
++		!(auth->map_netaccess_jwk)) {
+ 		hostapd_dpp_handle_config_obj(hapd, auth, &auth->conf_obj[0]);
+ 
+ 		os_free(hapd->conf->dpp_1905_connector);
+@@ -2116,6 +2132,11 @@ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd)
+ 		ret = 0;
+ 	}
+ 
++	if (auth->map_netaccess_jwk) {
++		hostapd_map_handle_connector_config_obj(hapd, auth, &auth->conf_obj[0]);
++		ret = 0;
++	}
++
+ 	dpp_auth_deinit(auth);
+ 	os_free(curve);
+ 
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 8d0ba5d..6ba090a 100644
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -1656,12 +1656,29 @@ dpp_build_conf_obj_dpp(struct dpp_authentication *auth,
+ #ifdef CONFIG_TESTING_OPTIONS
+ skip_groups:
+ #endif /* CONFIG_TESTING_OPTIONS */
+-	if (!auth->peer_protocol_key ||
++	if (auth->map_netaccess_jwk) {
++		wpabuf_put_data(dppcon, wpabuf_head(auth->map_netaccess_jwk), wpabuf_len(auth->map_netaccess_jwk));
++	} else if (!auth->peer_protocol_key ||
+ 	    dpp_build_jwk(dppcon, "netAccessKey", auth->peer_protocol_key, NULL,
+ 			  auth->curve) < 0) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Failed to build netAccessKey JWK");
+ 		goto fail;
+ 	}
++	if (netrole == DPP_NETROLE_MAP_AGENT) {
++		struct wpabuf *netaccess_jwk = NULL;
++		char jwk[200];
++
++		netaccess_jwk = wpabuf_alloc(200);
++		if (!netaccess_jwk)
++			goto fail;
++		dpp_build_jwk(netaccess_jwk, "netAccessKey", auth->peer_protocol_key, NULL,
++                          auth->curve);
++
++		os_memcpy(jwk, wpabuf_head(netaccess_jwk), wpabuf_len(netaccess_jwk));
++		jwk[wpabuf_len(netaccess_jwk)] = '\0';
++		wpa_msg(auth->msg_ctx, MSG_INFO, DPP_MAP_NETACCESSKEY_JWK "%s", jwk);
++		wpabuf_free(netaccess_jwk);
++	}
+ 	if (conf->netaccesskey_expiry) {
+ 		struct os_tm tm;
+ 		char expiry[30];
+@@ -2622,7 +2639,7 @@ skip_groups:
+ 		goto fail;
+ 	dpp_debug_print_key("DPP: Received netAccessKey", key);
+ 
+-	if (EVP_PKEY_cmp(key, auth->own_protocol_key) != 1) {
++	if (!auth->map_netaccess_jwk && EVP_PKEY_cmp(key, auth->own_protocol_key) != 1) {
+ 		wpa_printf(MSG_DEBUG,
+ 			   "DPP: netAccessKey in connector does not match own protocol key");
+ #ifdef CONFIG_TESTING_OPTIONS
+diff --git a/src/common/dpp.h b/src/common/dpp.h
+index 6cb7c77..fe7c2bb 100644
+--- a/src/common/dpp.h
++++ b/src/common/dpp.h
+@@ -367,6 +367,7 @@ struct dpp_authentication {
+ 	char *dpp_1905_connector;
+ 	u8 is_bsta_1905;
+ 	enum dpp_akm akm_1905;
++	struct wpabuf *map_netaccess_jwk;
+ };
+ 
+ struct dpp_configurator {
+diff --git a/src/common/wpa_ctrl.h b/src/common/wpa_ctrl.h
+index 33c2cc3..ea8ac1c 100644
+--- a/src/common/wpa_ctrl.h
++++ b/src/common/wpa_ctrl.h
+@@ -207,6 +207,8 @@ extern "C" {
+ #define DPP_EVENT_DISC_CONF "DPP-DISC-CONF "
+ #define DPP_EVENT_PMK "DPP-PMK "
+ #define DPP_EVENT_PMKID "DPP-PMKID "
++#define DPP_MAP_EVENT_CONNECTOR "DPP-MAP-CONNECTOR "
++#define DPP_MAP_NETACCESSKEY_JWK "DPP-MAP-NETACCESSKEY-JWK "
+ 
+ /* MESH events */
+ #define MESH_GROUP_STARTED "MESH-GROUP-STARTED "

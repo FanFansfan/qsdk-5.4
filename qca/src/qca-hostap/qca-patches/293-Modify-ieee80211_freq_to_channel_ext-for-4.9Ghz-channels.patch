@@ -1,0 +1,49 @@
+From c542075e4e79d35ea56fee02eef61d4286c2830f Mon Sep 17 00:00:00 2001
+From: Hariharan Basuthkar <hbasuthk@qti.qualcomm.com>
+Date: Mon, 5 Oct 2020 22:58:46 +0530
+Subject: [PATCH] qca-hostap: Modify ieee80211_freq_to_channel_ext for 4.9Ghz
+ channels
+
+Modify the API ieee80211_freq_to_channel_ext to support the channel
+frequency to IEEE channel number conversion for 4.9 GHz Public Safety
+channels.
+
+Change-Id: Ice5e0e31083ad354bb1d6907b16549f813c75323
+CRs-Fixed: 2787845
+---
+ src/common/ieee802_11_common.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/src/common/ieee802_11_common.c b/src/common/ieee802_11_common.c
+index c0c569b..16d473b 100644
+--- a/src/common/ieee802_11_common.c
++++ b/src/common/ieee802_11_common.c
+@@ -921,10 +921,22 @@ enum hostapd_hw_mode ieee80211_freq_to_channel_ext(unsigned int freq,
+ 	}
+ 
+ 	if (freq >= 4900 && freq < 5000) {
+-		if ((freq - 4000) % 5)
+-			return NUM_HOSTAPD_MODES;
+-		*channel = (freq - 4000) / 5;
++		if (freq > 4940 && freq < 4990) {
++			if (((freq * 10) + (((freq % 5) == 2) ? 5 : 0) -
++			     49400) % 5)
++				return NUM_HOSTAPD_MODES;
++
++			*channel = (((freq * 10) + (((freq % 5) == 2) ? 5 :
++						    0) - 49400) / 5);
++		} else if (freq > 4900) {
++			if ((freq - 4000) % 5)
++				return NUM_HOSTAPD_MODES;
++
++			*channel = (freq - 4000) / 5;
++		}
++
+ 		*op_class = 0; /* TODO */
++
+ 		return HOSTAPD_MODE_IEEE80211A;
+ 	}
+ 
+-- 
+1.9.1
+

@@ -1,0 +1,287 @@
+#ifndef __LOWI_WIFI_DRIVER_UTILS_H__
+#define __LOWI_WIFI_DRIVER_UTILS_H__
+
+/*====*====*====*====*====*====*====*====*====*====*====*====*====*====*====*
+
+        LOWI Wifi Driver Utils Interface Header file
+
+GENERAL DESCRIPTION
+  This file contains the structure definitions and function prototypes for
+  LOWIWifiDriverUtils
+
+Copyright (c) 2012-2013, 2016-2018 Qualcomm Technologies, Inc.
+All Rights Reserved.
+Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+(c) 2012-2013 Qualcomm Atheros, Inc.
+  All Rights Reserved.
+  Qualcomm Atheros Confidential and Proprietary.
+=============================================================================*/
+#include "lowi_measurement_result.h"
+#include <inc/lowi_request.h>
+#include <inc/lowi_scan_measurement.h>
+#include <base_util/config_file.h>
+#include "lowi_utils_defines.h"
+#include "wipsiw.h"
+#include "wlan_capabilities.h"
+#include "qca-vendor.h"
+
+namespace qc_loc_fw
+{
+
+/**
+ * Utility Class
+ */
+class LOWIWifiDriverUtils
+{
+private:
+  /** Logging tag */
+  static const char * const TAG;
+  /** Socket for all IOCTL communication with WiFi Driver */
+  static int ioctlSock;
+  /** Wi-Fi Driver Capabilities */
+  static IwOemDataCap *iwOemDataCap;
+  /** wlan wireless interface name */
+  static char wlan_ifname[PROPERTY_VALUE_MAX];
+  /** wigig wireless interface name */
+  static char wigig_ifname[PROPERTY_VALUE_MAX];
+
+public:
+  enum eGetWiFiCapabilityError
+  {
+    CAP_SUCCESS = 0,
+    CAP_FAILURE,
+    CAP_NO_MEM,
+    CAP_IOCTL_FAILURE,
+    CAP_SYSTEM_PROP_FAILURE,
+    CAP_WLAN_DEV_FAILURE
+  };
+
+  /**
+   * Gets the supported frequencies for a specified band.
+   * @param eBand Band for which supported channels are to be returned
+   * @param s_ch_info* pointer to structure that contains all the
+   *                   supported channels
+   * @param char  Number of channels supported in the retrun value
+   * @return int* pointing to chunk of supported frequencies
+   *
+   * NOTE: Memory returned by int* should be freed by caller
+   */
+  static int* getSupportedFreqs (LOWIDiscoveryScanRequest::eBand band,
+      s_ch_info* p_ch_info,
+      unsigned char & num_channels);
+
+
+  /**
+   * Cleans-up the stored Wifi capabilities
+   */
+  static void cleanupWifiCapability ();
+
+  /**
+   * Gets Capability and Identity information from the Wi-Fi Host
+   * Driver
+   * @param IwOemDataCap* pointing to strucutre where capability
+   *                     information will be loaded
+   * @param localStaMac location where local STA MAC address will
+   *                    be stored.
+   * @return eGetWiFiCapabilityError Error code
+   */
+  static eGetWiFiCapabilityError getWiFiIdentityandCapability (
+                                           IwOemDataCap* iwOemDataCap,
+                                           LOWIMacAddress &localStaMac);
+
+  /**
+   * Sends the command to the driver
+   * @param char* Contains the command that needs to go to driver.
+   * @return bool true if success, false otherwise
+   */
+  static bool sendDriverCmd (char* buf);
+
+  /**
+   * Returns default wifi driver interface name by reading system property if
+   * not already read from the system property
+   * @return char*: string representing the default wifi driver interface
+   */
+  static char* get_interface_name (void);
+
+  /**
+   * Returns default wigig driver interface name
+   * @return char*: string representing the default wigig driver interface
+   */
+  static char* get_wigig_interface_name(void);
+
+  /**
+   * Get the current interface state of Wi-Fi
+   * @param char*: interface name
+   * @return eWifiIntfState: WiFi interface state
+   */
+  static eWifiIntfState getInterfaceState(char const *intfName);
+
+  /**
+   * This function identifies the wigig driver FW
+   * @return int: 0: success, else -1
+   */
+  static int getWigigDriverInfo()
+  {
+    int retVal = -1;
+    // query the driver, get FW version info: TODO
+    return retVal;
+  }
+};
+
+
+#if defined(FEATURE_LOWI_WIGIG_RTT)
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_INVALID            QCA_WLAN_VENDOR_ATTR_LOC_CAPA_INVALID
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAGS              QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAGS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_SESSIONS   QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_SESSIONS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_PEERS      QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_PEERS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_BURSTS_EXP QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_BURSTS_EXP
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_MEAS_PER_BURST QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_MEAS_PER_BURST
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_CAPA_SUPPORTED_TYPES    QCA_WLAN_VENDOR_ATTR_AOA_CAPA_SUPPORTED_TYPES
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_MAX                QCA_WLAN_VENDOR_ATTR_LOC_CAPA_MAX
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_INVALID            QCA_WLAN_VENDOR_ATTR_FTM_PEER_INVALID
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_MAC_ADDR           QCA_WLAN_VENDOR_ATTR_FTM_PEER_MAC_ADDR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_FREQ               QCA_WLAN_VENDOR_ATTR_FTM_PEER_FREQ
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_MEAS_FLAGS         QCA_WLAN_VENDOR_ATTR_FTM_PEER_MEAS_FLAGS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_MEAS_PARAMS        QCA_WLAN_VENDOR_ATTR_FTM_PEER_MEAS_PARAMS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_SECURE_TOKEN_ID    QCA_WLAN_VENDOR_ATTR_FTM_PEER_SECURE_TOKEN_ID
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_AOA_BURST_PERIOD   QCA_WLAN_VENDOR_ATTR_FTM_PEER_AOA_BURST_PERIOD
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_SESSION_COOKIE          QCA_WLAN_VENDOR_ATTR_FTM_SESSION_COOKIE
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA                    QCA_WLAN_VENDOR_ATTR_LOC_CAPA
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PEERS              QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PEERS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PEER_RESULTS       QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PEER_RESULTS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_RESPONDER_ENABLE        QCA_WLAN_VENDOR_ATTR_FTM_RESPONDER_ENABLE
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_LCI                     QCA_WLAN_VENDOR_ATTR_FTM_LCI
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_LCR                     QCA_WLAN_VENDOR_ATTR_FTM_LCR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_SESSION_STATUS          QCA_WLAN_VENDOR_ATTR_LOC_SESSION_STATUS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_INITIAL_TOKEN           QCA_WLAN_VENDOR_ATTR_FTM_INITIAL_TOKEN
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_TYPE                    QCA_WLAN_VENDOR_ATTR_AOA_TYPE
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_ANTENNA_ARRAY_MASK      QCA_WLAN_VENDOR_ATTR_LOC_ANTENNA_ARRAY_MASK
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_MEAS_RESULT             QCA_WLAN_VENDOR_ATTR_AOA_MEAS_RESULT
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_LOC_GET_CAPA           QCA_NL80211_VENDOR_SUBCMD_LOC_GET_CAPA
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_START_SESSION      QCA_NL80211_VENDOR_SUBCMD_FTM_START_SESSION
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_ABORT_SESSION      QCA_NL80211_VENDOR_SUBCMD_FTM_ABORT_SESSION
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_MEAS_RESULT        QCA_NL80211_VENDOR_SUBCMD_FTM_MEAS_RESULT
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_SESSION_DONE       QCA_NL80211_VENDOR_SUBCMD_FTM_SESSION_DONE
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_CFG_RESPONDER      QCA_NL80211_VENDOR_SUBCMD_FTM_CFG_RESPONDER
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_AOA_MEAS               QCA_NL80211_VENDOR_SUBCMD_AOA_MEAS
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_AOA_ABORT_MEAS         QCA_NL80211_VENDOR_SUBCMD_AOA_ABORT_MEAS
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_AOA_MEAS_RESULT        QCA_NL80211_VENDOR_SUBCMD_AOA_MEAS_RESULT
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_FTM_INITIATOR QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_FTM_INITIATOR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_FTM_RESPONDER QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_FTM_RESPONDER
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_ASAP          QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_ASAP
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_AOA           QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_AOA
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_AOA_IN_FTM    QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_AOA_IN_FTM
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_TYPE_TOP_CIR_PHASE      QCA_WLAN_VENDOR_ATTR_AOA_TYPE_TOP_CIR_PHASE
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_TYPE_TOP_CIR_PHASE_AMP  QCA_WLAN_VENDOR_ATTR_AOA_TYPE_TOP_CIR_PHASE_AMP
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INVALID            QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INVALID
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T1                 QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T2                 QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T3                 QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T4                 QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_RSSI               QCA_WLAN_VENDOR_ATTR_FTM_MEAS_RSSI
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_TOD_ERR            QCA_WLAN_VENDOR_ATTR_FTM_MEAS_TOD_ERR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_TOA_ERR            QCA_WLAN_VENDOR_ATTR_FTM_MEAS_TOA_ERR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INITIATOR_TOD_ERR  QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INITIATOR_TOD_ERR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INITIATOR_TOA_ERR  QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INITIATOR_TOA_ERR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PAD                QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PAD
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_MAX                QCA_WLAN_VENDOR_ATTR_FTM_MEAS_MAX
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_MAX                         QCA_WLAN_VENDOR_ATTR_MAX
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_INVALID        QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_INVALID
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MAC_ADDR       QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MAC_ADDR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_STATUS         QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_STATUS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_FLAGS          QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_FLAGS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_VALUE_SECONDS  QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_VALUE_SECONDS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_LCI            QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_LCI
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_LCR            QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_LCR
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MEAS_PARAMS    QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MEAS_PARAMS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_AOA_MEAS       QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_AOA_MEAS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MEAS           QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MEAS
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MAX            QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MAX
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_INVALID           QCA_WLAN_VENDOR_ATTR_FTM_PARAM_INVALID
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_MEAS_PER_BURST    QCA_WLAN_VENDOR_ATTR_FTM_PARAM_MEAS_PER_BURST
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_NUM_BURSTS_EXP    QCA_WLAN_VENDOR_ATTR_FTM_PARAM_NUM_BURSTS_EXP
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_BURST_DURATION    QCA_WLAN_VENDOR_ATTR_FTM_PARAM_BURST_DURATION
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_BURST_PERIOD      QCA_WLAN_VENDOR_ATTR_FTM_PARAM_BURST_PERIOD
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_AFTER_LAST        QCA_WLAN_VENDOR_ATTR_FTM_PARAM_AFTER_LAST
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_MAX               QCA_WLAN_VENDOR_ATTR_FTM_PARAM_MAX
+#else
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_INVALID            0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAGS              1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_SESSIONS   2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_PEERS      3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_NUM_BURSTS_EXP 4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_CAPA_MAX_MEAS_PER_BURST 5
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_CAPA_SUPPORTED_TYPES    6
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_MAX                6
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_INVALID            0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_MAC_ADDR           1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_MEAS_FLAGS         2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_MEAS_PARAMS        3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_SECURE_TOKEN_ID    4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_AOA_BURST_PERIOD   5
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_FREQ               6
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_SESSION_COOKIE          14
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA                    15
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PEERS              16
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PEER_RESULTS       17
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_RESPONDER_ENABLE        18
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_LCI                     19
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_LCR                     20
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_SESSION_STATUS          21
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_INITIAL_TOKEN           22
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_TYPE                    23
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_ANTENNA_ARRAY_MASK      24
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_MEAS_RESULT             25
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_LOC_GET_CAPA           128
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_START_SESSION      129
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_ABORT_SESSION      130
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_MEAS_RESULT        131
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_SESSION_DONE       132
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_FTM_CFG_RESPONDER      133
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_AOA_MEAS               134
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_AOA_ABORT_MEAS         135
+  #define LOWI_QCA_NL80211_VENDOR_SUBCMD_AOA_MEAS_RESULT        136
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_FTM_RESPONDER 1 << 0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_FTM_INITIATOR 1 << 1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_ASAP          1 << 2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_AOA           1 << 3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_LOC_CAPA_FLAG_AOA_IN_FTM    1 << 4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_TYPE_TOP_CIR_PHASE      0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_AOA_TYPE_TOP_CIR_PHASE_AMP  1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INVALID            0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T1                 1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T2                 2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T3                 3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_T4                 4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_RSSI               5
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_TOD_ERR            6
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_TOA_ERR            8
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INITIATOR_TOD_ERR  9
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_INITIATOR_TOA_ERR  10
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_PAD                11
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_MEAS_MAX                11
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_MAX                         28
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_INVALID        0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MAC_ADDR       1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_STATUS         2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_FLAGS          3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_VALUE_SECONDS  4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_LCI            5
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_LCR            6
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MEAS_PARAMS    7
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_AOA_MEAS       8
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MEAS           9
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PEER_RES_MAX            9
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_INVALID           0
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_MEAS_PER_BURST    1
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_NUM_BURSTS_EXP    2
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_BURST_DURATION    3
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_BURST_PERIOD      4
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_AFTER_LAST        5
+  #define LOWI_QCA_WLAN_VENDOR_ATTR_FTM_PARAM_MAX               5
+#endif // FEATURE_LOWI_WIGIG_RTT
+
+} // namespace qc_loc_fw
+
+#endif //#ifndef __LOWI_WIFI_DRIVER_UTILS_H__

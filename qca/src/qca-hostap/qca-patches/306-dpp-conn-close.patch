@@ -1,0 +1,73 @@
+diff --git a/src/common/dpp_i.h b/src/common/dpp_i.h
+index 9176f70..e84f62a 100644
+--- a/src/common/dpp_i.h
++++ b/src/common/dpp_i.h
+@@ -158,6 +158,7 @@ void dpp_controller_conn_status_result_wait_timeout(void *eloop_ctx,
+ 						    void *timeout_ctx);
+ void dpp_tcp_init_flush(struct dpp_global *dpp);
+ void dpp_relay_flush_controllers(struct dpp_global *dpp);
++void dpp_relay_conn_timeout(void *eloop_ctx, void *timeout_ctx);
+ 
+ #endif /* CONFIG_DPP */
+ #endif /* DPP_I_H */
+diff --git a/src/common/dpp_tcp.c b/src/common/dpp_tcp.c
+index 1b774b8..f8f3df2 100644
+--- a/src/common/dpp_tcp.c
++++ b/src/common/dpp_tcp.c
+@@ -86,6 +86,8 @@ static void dpp_tcp_gas_query_comeback(void *eloop_ctx, void *timeout_ctx);
+ 
+ static void dpp_connection_free(struct dpp_connection *conn)
+ {
++	if (!conn)
++		return;
+ 	if (conn->sock >= 0) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Close Controller socket %d",
+ 			   conn->sock);
+@@ -97,6 +99,7 @@ static void dpp_connection_free(struct dpp_connection *conn)
+ 			     conn, NULL);
+ 	eloop_cancel_timeout(dpp_tcp_build_csr, conn, NULL);
+ 	eloop_cancel_timeout(dpp_tcp_gas_query_comeback, conn, NULL);
++	eloop_cancel_timeout(dpp_relay_conn_timeout, conn, NULL);
+ 	wpabuf_free(conn->msg);
+ 	wpabuf_free(conn->msg_out);
+ 	dpp_auth_deinit(conn->auth);
+@@ -105,8 +108,11 @@ static void dpp_connection_free(struct dpp_connection *conn)
+ }
+ 
+ 
++
+ static void dpp_connection_remove(struct dpp_connection *conn)
+ {
++	if (!conn)
++		return;
+ 	dl_list_del(&conn->list);
+ 	dpp_connection_free(conn);
+ }
+@@ -356,6 +362,16 @@ static int dpp_ipaddr_to_sockaddr(struct sockaddr *addr, socklen_t *addrlen,
+ }
+ 
+ 
++void dpp_relay_conn_timeout(void *eloop_ctx, void *timeout_ctx)
++{
++	struct dpp_connection *conn = eloop_ctx;
++
++	wpa_printf(MSG_DEBUG,
++		"DPP: Timeout while waiting for connection complete");
++	dpp_connection_remove(conn);
++}
++
++
+ static struct dpp_connection *
+ dpp_relay_new_conn(struct dpp_relay_controller *ctrl, const u8 *src,
+ 		   unsigned int freq)
+@@ -416,8 +432,8 @@ dpp_relay_new_conn(struct dpp_relay_controller *ctrl, const u8 *src,
+ 		goto fail;
+ 	conn->write_eloop = 1;
+ 
+-	/* TODO: eloop timeout to clear a connection if it does not complete
+-	 * properly */
++	eloop_cancel_timeout(dpp_relay_conn_timeout, conn, NULL);
++	eloop_register_timeout(20, 0, dpp_relay_conn_timeout, conn, NULL);
+ 
+ 	dl_list_add(&ctrl->conn, &conn->list);
+ 	return conn;

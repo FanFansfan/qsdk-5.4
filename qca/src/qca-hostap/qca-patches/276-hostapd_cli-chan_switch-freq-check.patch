@@ -1,0 +1,22 @@
+diff --git a/src/ap/hostapd.c b/src/ap/hostapd.c
+index e4950e3..61fb02e 100644
+--- a/src/ap/hostapd.c
++++ b/src/ap/hostapd.c
+@@ -3356,6 +3356,17 @@ static int hostapd_change_config_freq(struct hostapd_data *hapd,
+ 				    NULL))
+ 		return -1;
+ 
++	/* If new frequency and bandwidth are same as current frequency
++	 * and bandwidth, return
++	 */
++	if (old_params &&
++			(old_params->freq == params->freq &&
++			 old_params->bandwidth == params->bandwidth)) {
++		wpa_printf(MSG_DEBUG, "%s: Frequency=%d bandwidth=%d. Configured already.",
++				__func__, params->freq, params->bandwidth);
++		return -1;
++	}
++
+ 	switch (params->bandwidth) {
+ 	case 0:
+ 	case 20:

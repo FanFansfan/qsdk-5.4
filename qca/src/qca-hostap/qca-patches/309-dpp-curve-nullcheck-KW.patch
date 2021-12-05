@@ -1,0 +1,16 @@
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 3c8c768..a31c8ac 100644
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -3479,6 +3479,11 @@ dpp_keygen_configurator(const char *curve, const u8 *privkey,
+ 					      privkey_len);
+ 	else
+ 		conf->csign = dpp_gen_keypair(conf->curve);
++	if (!conf->curve) {
++		wpa_printf(MSG_INFO, "DPP: Unsupported curve: %s", curve);
++		os_free(conf);
++		return NULL;
++	}
+ 	if (pp_key)
+ 		conf->pp_key = dpp_set_keypair(&conf->curve, pp_key,
+ 					       pp_key_len);

@@ -1,0 +1,32 @@
+From 793e63fc514926986344d719ef4269393a7a3578 Mon Sep 17 00:00:00 2001
+From: leiwei <leiwei@qti.qualcomm.com>
+Date: Wed, 14 Aug 2019 17:51:39 +0800
+Subject: [PATCH] qca-hostap: Add new secyid interface mapping for hostapd
+
+Change-Id: I4db2e3a3b5d8c6ad35b93bfacce3627e12f3dfbe
+Signed-off-by: leiwei <leiwei@qti.qualcomm.com>
+---
+ src/drivers/driver_macsec_qca.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/drivers/driver_macsec_qca.c b/src/drivers/driver_macsec_qca.c
+index 44acc28..a9619bb 100644
+--- a/src/drivers/driver_macsec_qca.c
++++ b/src/drivers/driver_macsec_qca.c
+@@ -314,9 +314,11 @@ static void * macsec_qca_hapd_init(struct hostapd_data *hapd,
+ 		drv->secy_id = 1;
+ 	else if (os_memcmp("eth3", params->ifname, 4) == 0)
+ 		drv->secy_id = 2;
+-	else if (os_memcmp("eth4", params->ifname, 4) == 0)
++	else if ((os_memcmp("eth4", params->ifname, 4) == 0) ||
++		 (os_memcmp("eth0", params->ifname, 4) == 0))
+ 		drv->secy_id = 0;
+-	else if (os_memcmp("eth5", params->ifname, 4) == 0)
++	else if ((os_memcmp("eth5", params->ifname, 4) == 0) ||
++		 (os_memcmp("eth1", params->ifname, 4) == 0))
+ 		drv->secy_id = 1;
+ 	else
+ 		drv->secy_id = -1;
+-- 
+1.9.1
+

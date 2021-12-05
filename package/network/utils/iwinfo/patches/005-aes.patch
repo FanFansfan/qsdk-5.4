@@ -1,0 +1,22 @@
+diff -uprN a/include/iwinfo.h b/include/iwinfo.h
+--- a/include/iwinfo.h	2021-03-28 21:40:34.394131000 +0800
++++ b/include/iwinfo.h	2021-03-28 21:51:06.384912559 +0800
+@@ -44,7 +44,9 @@
+ #define IWINFO_KMGMT_NONE    (1 << 0)
+ #define IWINFO_KMGMT_8021x   (1 << 1)
+ #define IWINFO_KMGMT_PSK     (1 << 2)
+-#define IWINFO_KMGMT_COUNT   3
++#define IWINFO_KMGMT_SAE     (1 << 3)
++#define IWINFO_KMGMT_OWE     (1 << 4)
++#define IWINFO_KMGMT_COUNT   5
+ 
+ #define IWINFO_AUTH_OPEN     (1 << 0)
+ #define IWINFO_AUTH_SHARED   (1 << 1)
+@@ -56,6 +58,7 @@
+ #define IWINFO_FREQ_NO_HT40MINUS	(1 << 3)
+ #define IWINFO_FREQ_NO_80MHZ		(1 << 4)
+ #define IWINFO_FREQ_NO_160MHZ		(1 << 5)
++#define IWINFO_FREQ_NO_2160MHZ		(1 << 6)
+ 
+ extern const char *IWINFO_CIPHER_NAMES[IWINFO_CIPHER_COUNT];
+ extern const char *IWINFO_KMGMT_NAMES[IWINFO_KMGMT_COUNT];

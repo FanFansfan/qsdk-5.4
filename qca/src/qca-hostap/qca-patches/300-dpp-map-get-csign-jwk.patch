@@ -1,0 +1,185 @@
+diff --git a/hostapd/ctrl_iface.c b/hostapd/ctrl_iface.c
+index 65f05ed..24d4c5b 100644
+--- a/hostapd/ctrl_iface.c
++++ b/hostapd/ctrl_iface.c
+@@ -3755,6 +3755,10 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
+ 			hapd->iface->interfaces->dpp,
+ 			atoi(buf + 25),
+ 			reply, reply_size);
++	} else if (os_strncmp(buf, "DPP_MAP_GET_JWK_CSIGN ", 22) == 0) {
++		if (hostapd_dpp_map_get_jwk_csign(hapd, buf + 22) < 0) {
++			reply_len = -1;
++		}
+ 	} else if (os_strncmp(buf, "DPP_PKEX_ADD ", 13) == 0) {
+ 		res = hostapd_dpp_pkex_add(hapd, buf + 12);
+ 		if (res < 0) {
+diff --git a/hostapd/hostapd_cli.c b/hostapd/hostapd_cli.c
+index ee1504c..99ce56e 100644
+--- a/hostapd/hostapd_cli.c
++++ b/hostapd/hostapd_cli.c
+@@ -1472,6 +1472,13 @@ static int hostapd_cli_cmd_dpp_configurator_sign(struct wpa_ctrl *ctrl,
+ }
+ 
+ 
++static int hostapd_cli_dpp_map_get_jwk_csign(struct wpa_ctrl *ctrl,
++						 int argc, char *argv[])
++{
++       return hostapd_cli_cmd(ctrl, "DPP_MAP_GET_JWK_CSIGN", 1, argc, argv);
++}
++
++
+ static int hostapd_cli_cmd_dpp_pkex_add(struct wpa_ctrl *ctrl, int argc,
+ 					char *argv[])
+ {
+@@ -1730,6 +1737,9 @@ static const struct hostapd_cli_cmd hostapd_cli_commands[] = {
+ 	  "<id> = Get DPP configurator's private key" },
+ 	{ "dpp_configurator_sign", hostapd_cli_cmd_dpp_configurator_sign, NULL,
+ 	  "conf=<role> configurator=<id> = generate self DPP configuration" },
++	{ "dpp_map_get_jwk_csign", hostapd_cli_dpp_map_get_jwk_csign,
++	  NULL,
++	  "[curve=..][conf_obj=..]" },
+ 	{ "dpp_pkex_add", hostapd_cli_cmd_dpp_pkex_add, NULL,
+ 	  "add PKEX code" },
+ 	{ "dpp_pkex_remove", hostapd_cli_cmd_dpp_pkex_remove, NULL,
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+index 626bd15..7eec0ea 100644
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -2145,6 +2145,23 @@ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd)
+ }
+ 
+ 
++int hostapd_dpp_map_get_jwk_csign(struct hostapd_data *hapd, const char *cmd)
++{
++	struct dpp_authentication *auth;
++	int ret = -1;
++	char jwk[200];
++
++	auth = dpp_alloc_auth(hapd->iface->interfaces->dpp, hapd->msg_ctx);
++	if (!auth)
++		return -1;
++
++	if (dpp_map_get_jwk_csign(auth, cmd, jwk) == 0) {
++		ret = 0;
++	}
++
++	return ret;
++}
++
+ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd)
+ {
+ 	struct dpp_bootstrap_info *own_bi;
+diff --git a/src/ap/dpp_hostapd.h b/src/ap/dpp_hostapd.h
+index 4dcc1b7..8d6c711 100644
+--- a/src/ap/dpp_hostapd.h
++++ b/src/ap/dpp_hostapd.h
+@@ -33,6 +33,7 @@ int hostapd_dpp_configurator_remove(struct hostapd_data *hapd, const char *id);
+ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd);
+ int hostapd_dpp_configurator_get_key(struct hostapd_data *hapd, unsigned int id,
+ 				     char *buf, size_t buflen);
++int hostapd_dpp_map_get_jwk_csign(struct hostapd_data *hapd, const char *cmd);
+ int hostapd_dpp_pkex_add(struct hostapd_data *hapd, const char *cmd);
+ int hostapd_dpp_pkex_remove(struct hostapd_data *hapd, const char *id);
+ void hostapd_dpp_stop(struct hostapd_data *hapd);
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 95adfe2..72e063c 100644
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -4764,6 +4764,72 @@ int dpp_configurator_get_key_id(struct dpp_global *dpp, unsigned int id,
+ }
+ 
+ 
++int dpp_map_get_jwk_csign(struct dpp_authentication *auth, const char *cmd, char *jwk)
++{
++	char *curve = NULL;
++	char *key = NULL;
++	u8 *privkey = NULL;
++	size_t privkey_len = 0;
++	int ret = -1;
++	struct dpp_configurator *conf = NULL;
++	struct wpabuf *buf = NULL;
++
++	curve = get_param(cmd, " curve=");
++	key = get_param(cmd, " key=");
++
++	if (key) {
++		privkey_len = os_strlen(key) / 2;
++		privkey = os_malloc(privkey_len);
++		if (!privkey ||
++		    hexstr2bin(key, privkey, privkey_len) < 0)
++			goto fail;
++	}
++
++	conf = os_zalloc(sizeof(*conf));
++	if (!conf)
++		goto fail;
++
++	conf->curve = dpp_get_curve_name(curve);
++	if (!conf->curve) {
++		wpa_printf(MSG_INFO, "DPP: Unsupported curve: %s", curve);
++		goto fail;
++	}
++
++	if (privkey)
++		conf->csign = dpp_set_keypair(&conf->curve, privkey,
++					      privkey_len);
++	else
++		conf->csign = dpp_gen_keypair(conf->curve);
++	if (!conf->csign)
++		goto fail;
++
++	if (dpp_configurator_gen_kid(conf) < 0)
++		goto fail;
++
++	dpp_copy_csign(&auth->conf_obj[0], conf->csign);
++
++	buf = wpabuf_alloc(200);
++	if (!buf)
++		goto fail;
++	if (dpp_build_jwk(buf, "csign", conf->csign, conf->kid, conf->curve) < 0) {
++		wpa_printf(MSG_DEBUG, "DPP: Failed to build csign JWK");
++		goto fail;
++	}
++	ret = 0;
++	os_memcpy(jwk, wpabuf_head(buf), wpabuf_len(buf));
++	jwk[wpabuf_len(buf)] = '\0';
++	wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_JWK_CSIGN "%s",
++                        jwk);
++fail:
++	os_free(curve);
++	str_clear_free(key);
++	bin_clear_free(privkey, privkey_len);
++	dpp_configurator_free(conf);
++	if (buf)
++		wpabuf_free(buf);
++	return ret;
++}
++
+ #ifdef CONFIG_DPP2
+ 
+ int dpp_configurator_from_backup(struct dpp_global *dpp,
+diff --git a/src/common/dpp.h b/src/common/dpp.h
+index 48fdeb5..9a181f9 100644
+--- a/src/common/dpp.h
++++ b/src/common/dpp.h
+@@ -674,6 +674,8 @@ int dpp_configurator_add(struct dpp_global *dpp, const char *cmd);
+ int dpp_configurator_remove(struct dpp_global *dpp, const char *id);
+ int dpp_configurator_get_key_id(struct dpp_global *dpp, unsigned int id,
+ 				char *buf, size_t buflen);
++int dpp_map_get_jwk_csign(struct dpp_authentication *auth, const char *cmd,
++			  char *jwk);
+ int dpp_configurator_from_backup(struct dpp_global *dpp,
+ 				 struct dpp_asymmetric_key *key);
+ struct dpp_configurator * dpp_configurator_find_kid(struct dpp_global *dpp,
+diff --git a/src/common/wpa_ctrl.h b/src/common/wpa_ctrl.h
+index ea8ac1c..28c2658 100644
+--- a/src/common/wpa_ctrl.h
++++ b/src/common/wpa_ctrl.h
+@@ -209,6 +209,7 @@ extern "C" {
+ #define DPP_EVENT_PMKID "DPP-PMKID "
+ #define DPP_MAP_EVENT_CONNECTOR "DPP-MAP-CONNECTOR "
+ #define DPP_MAP_NETACCESSKEY_JWK "DPP-MAP-NETACCESSKEY-JWK "
++#define DPP_EVENT_JWK_CSIGN "DPP-JWK-CSIGN "
+ 
+ /* MESH events */
+ #define MESH_GROUP_STARTED "MESH-GROUP-STARTED "

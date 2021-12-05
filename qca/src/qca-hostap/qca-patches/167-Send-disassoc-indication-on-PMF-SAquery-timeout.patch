@@ -1,0 +1,50 @@
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 7a01e1d..2ee79f3 100644
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -112,8 +112,10 @@ static bool check_sa_query_need(struct hostapd_data *hapd, struct sta_info *sta)
+ 	    (WLAN_STA_ASSOC | WLAN_STA_MFP | WLAN_STA_AUTHORIZED))
+ 		return false;
+ 
+-	if (!sta->sa_query_timed_out && sta->sa_query_count > 0)
+-		ap_check_sa_query_timeout(hapd, sta);
++	if (!sta->sa_query_timed_out && sta->sa_query_count > 0) {
++	    if (ap_check_sa_query_timeout(hapd, sta))
++		return false;
++	}
+ 
+ 	if (!sta->sa_query_timed_out && (sta->auth_alg != WLAN_AUTH_FT)) {
+ 		/*
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 647df10..96df1d4 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -3160,8 +3160,12 @@ static bool check_sa_query(struct hostapd_data *hapd, struct sta_info *sta,
+ 	    (WLAN_STA_ASSOC | WLAN_STA_MFP | WLAN_STA_AUTHORIZED))
+ 		return false;
+ 
+-	if (!sta->sa_query_timed_out && sta->sa_query_count > 0)
+-		ap_check_sa_query_timeout(hapd, sta);
++	if (!sta->sa_query_timed_out && sta->sa_query_count > 0) {
++		if (ap_check_sa_query_timeout(hapd, sta)) {
++			sta = NULL;
++			return WLAN_STATUS_UNSPECIFIED_FAILURE;
++		}
++	}
+ 
+ 	if (!sta->sa_query_timed_out &&
+ 	    (!reassoc || sta->auth_alg != WLAN_AUTH_FT)) {
+diff --git a/src/ap/sta_info.c b/src/ap/sta_info.c
+index 67b5e98..3e2f3f5 100644
+--- a/src/ap/sta_info.c
++++ b/src/ap/sta_info.c
+@@ -1124,6 +1124,9 @@ int ap_check_sa_query_timeout(struct hostapd_data *hapd, struct sta_info *sta)
+ 		sta->sa_query_trans_id = NULL;
+ 		sta->sa_query_count = 0;
+ 		eloop_cancel_timeout(ap_sa_query_timer, hapd, sta);
++                wpa_printf(MSG_DEBUG, "SA Query procedure timeout send disassoc");
++                hostapd_drv_sta_disassoc(hapd, sta->addr, WLAN_REASON_PREV_AUTH_NOT_VALID);
++                ap_free_sta(hapd, sta);
+ 		return 1;
+ 	}
+ 

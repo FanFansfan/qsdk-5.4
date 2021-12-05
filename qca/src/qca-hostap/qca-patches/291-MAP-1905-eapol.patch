@@ -1,0 +1,182 @@
+diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
+index 09abe2c..59615ec 100644
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -3011,10 +3011,13 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
+ 		}
+ 		wpa_hexdump(MSG_DEBUG, "WPA IE in msg 2/4",
+ 			    eapol_key_ie, eapol_key_ie_len);
+-		/* MLME-DEAUTHENTICATE.request */
+-		wpa_sta_disconnect(wpa_auth, sm->addr,
+-				   WLAN_REASON_PREV_AUTH_NOT_VALID);
+-		return;
++		if(!wpa_auth->conf.no_group_delay) {
++			/* MLME-DEAUTHENTICATE.request */
++			wpa_sta_disconnect(wpa_auth, sm->addr,
++					   WLAN_REASON_PREV_AUTH_NOT_VALID);
++			return;
++		}
++
+ 	}
+ 	if ((!sm->rsnxe && kde.rsnxe) ||
+ 	    (sm->rsnxe && !kde.rsnxe) ||
+@@ -3481,8 +3484,14 @@ SM_STATE(WPA_PTK, PTKINITNEGOTIATING)
+ 
+ 	if (gtk) {
+ 		hdr[0] = gtkidx & 0x03;
+-		pos = wpa_add_kde(pos, RSN_KEY_DATA_GROUPKEY, hdr, 2,
++		 if(!conf->no_group_delay) {
++			pos = wpa_add_kde(pos, RSN_KEY_DATA_GROUPKEY, hdr, 2,
+ 				  gtk, gtk_len);
++
++		} else {
++			pos = wpa_add_kde(pos, MAP_KEY_DATA_GROUPKEY, hdr, 1,
++				  gtk, gtk_len);
++		}
+ 	}
+ 	pos = ieee80211w_kde_add(sm, pos);
+ 	if (ocv_oci_add(sm, &pos, conf->oci_freq_override_eapol_m3) < 0)
+diff --git a/src/common/wpa_common.c b/src/common/wpa_common.c
+index 82a5a17..2fa5fe7 100644
+--- a/src/common/wpa_common.c
++++ b/src/common/wpa_common.c
+@@ -2741,6 +2741,15 @@ static int wpa_parse_generic(const u8 *pos, struct wpa_eapol_ie_parse *ie)
+ 	}
+ 
+ 	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
++	    RSN_SELECTOR_GET(pos + 2) == MAP_KEY_DATA_GROUPKEY) {
++		ie->gtk = pos + 2 + RSN_SELECTOR_LEN - 1;
++		ie->gtk_len = pos[1] - RSN_SELECTOR_LEN + 1;
++		wpa_hexdump_key(MSG_DEBUG, "WPA: GTK in EAPOL-Key",
++				pos, pos[1] + 2);
++		return 0;
++	}
++
++	if (pos[1] > RSN_SELECTOR_LEN + 2 &&
+ 	    RSN_SELECTOR_GET(pos + 2) == RSN_KEY_DATA_MAC_ADDR) {
+ 		ie->mac_addr = pos + 2 + RSN_SELECTOR_LEN;
+ 		ie->mac_addr_len = pos[1] - RSN_SELECTOR_LEN;
+diff --git a/src/common/wpa_common.h b/src/common/wpa_common.h
+index 065dc71..264c9b0 100644
+--- a/src/common/wpa_common.h
++++ b/src/common/wpa_common.h
+@@ -109,6 +109,9 @@ WPA_CIPHER_BIP_CMAC_256)
+  * GroupKey and PeerKey require encryption, otherwise, encryption is optional.
+  */
+ #define RSN_KEY_DATA_GROUPKEY RSN_SELECTOR(0x00, 0x0f, 0xac, 1)
++#define MAP_KEY_DATA_GROUPKEY RSN_SELECTOR(0x50, 0x6f, 0x9a, 0)
++
++
+ #if 0
+ #define RSN_KEY_DATA_STAKEY RSN_SELECTOR(0x00, 0x0f, 0xac, 2)
+ #endif
+diff --git a/src/drivers/eap1905.c b/src/drivers/eap1905.c
+index dc0c517..100b28f 100644
+--- a/src/drivers/eap1905.c
++++ b/src/drivers/eap1905.c
+@@ -133,6 +133,7 @@ static int auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
+ 
+ 	send(eapol_1905_sock_tx, send_buffer, 64, 0);
+ 
++#ifdef TESTING
+ 	if (!is_broadcast_ether_addr(addr)) {
+ 		int i = 0;
+ 		for (i = 0; i < wpa->sta_count; ) {
+@@ -147,6 +148,7 @@ static int auth_set_key(void *ctx, int vlan_id, enum wpa_alg alg,
+ 			}
+ 		}
+ 	}
++#endif
+ 	return 0;
+ }
+ 
+diff --git a/src/drivers/eap1905_sta.c b/src/drivers/eap1905_sta.c
+index f8e1e61..5561d9f 100644
+--- a/src/drivers/eap1905_sta.c
++++ b/src/drivers/eap1905_sta.c
+@@ -315,6 +315,7 @@ static int sta_init(struct wpa_1905 *wpa, struct sta_sec_config *sec_conf)
+ 		return -1;
+ 	}
+ 
++	wpa_sm_set_skip_validate_ie(wpa->supp, 1);
+ 	wpa_sm_notify_assoc(wpa->supp, wpa->auth_addr);
+ 
+ 	return 0;
+diff --git a/src/rsn_supp/wpa.c b/src/rsn_supp/wpa.c
+index cd02d0e..7a190fe 100644
+--- a/src/rsn_supp/wpa.c
++++ b/src/rsn_supp/wpa.c
+@@ -1674,7 +1674,7 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
+ 		goto failed;
+ 	}
+ 
+-	if (wpa_supplicant_validate_ie(sm, sm->bssid, &ie) < 0)
++	if ((!sm->skip_validate_ie) && wpa_supplicant_validate_ie(sm, sm->bssid, &ie) < 0)
+ 		goto failed;
+ 
+ 	if (wpa_handle_ext_key_id(sm, &ie))
+@@ -2906,6 +2906,7 @@ void wpa_sm_deinit(struct wpa_sm *sm)
+ 	os_free(sm->ap_rsn_ie);
+ 	os_free(sm->ap_rsnxe);
+ 	wpa_sm_drop_sa(sm);
++
+ 	os_free(sm->ctx);
+ #ifdef CONFIG_IEEE80211R
+ 	os_free(sm->assoc_resp_ies);
+@@ -3017,11 +3018,13 @@ void wpa_sm_notify_assoc(struct wpa_sm *sm, const u8 *bssid)
+  * This function is called to let WPA state machine know that the connection
+  * was lost. This will abort any existing pre-authentication session.
+  */
++
+ void wpa_sm_notify_disassoc(struct wpa_sm *sm)
+ {
+ 	eloop_cancel_timeout(wpa_sm_start_preauth, sm, NULL);
+ 	eloop_cancel_timeout(wpa_sm_rekey_ptk, sm, NULL);
+ 	rsn_preauth_deinit(sm);
++
+ 	pmksa_cache_clear_current(sm);
+ 	if (wpa_sm_get_state(sm) == WPA_4WAY_HANDSHAKE)
+ 		sm->dot11RSNA4WayHandshakeFailures++;
+@@ -3119,6 +3122,18 @@ void wpa_sm_set_fast_reauth(struct wpa_sm *sm, int fast_reauth)
+ 
+ 
+ /**
++ * wpa_sm_set_skip_validate_ie - Set validate ie  enabled/disabled
++ * @sm: Pointer to WPA state machine data from wpa_sm_init()
++ * @skip: Whether fast IE need to be validated in EAPOL 3/4
++ */
++void wpa_sm_set_skip_validate_ie(struct wpa_sm *sm, int skip)
++{
++        if (sm)
++                sm->skip_validate_ie = skip;
++}
++
++
++/**
+  * wpa_sm_set_scard_ctx - Set context pointer for smartcard callbacks
+  * @sm: Pointer to WPA state machine data from wpa_sm_init()
+  * @scard_ctx: Context pointer for smartcard related callback functions
+diff --git a/src/rsn_supp/wpa.h b/src/rsn_supp/wpa.h
+index 36a17df..d9aeedd 100644
+--- a/src/rsn_supp/wpa.h
++++ b/src/rsn_supp/wpa.h
+@@ -139,6 +139,7 @@ void wpa_sm_set_pmk(struct wpa_sm *sm, const u8 *pmk, size_t pmk_len,
+ 		    const u8 *pmkid, const u8 *bssid);
+ void wpa_sm_set_pmk_from_pmksa(struct wpa_sm *sm);
+ void wpa_sm_set_fast_reauth(struct wpa_sm *sm, int fast_reauth);
++void wpa_sm_set_skip_validate_ie(struct wpa_sm *sm, int skip);
+ void wpa_sm_set_scard_ctx(struct wpa_sm *sm, void *scard_ctx);
+ void wpa_sm_set_config(struct wpa_sm *sm, struct rsn_supp_config *config);
+ void wpa_sm_set_own_addr(struct wpa_sm *sm, const u8 *addr);
+diff --git a/src/rsn_supp/wpa_i.h b/src/rsn_supp/wpa_i.h
+index 8d7a7a9..2090a34 100644
+--- a/src/rsn_supp/wpa_i.h
++++ b/src/rsn_supp/wpa_i.h
+@@ -187,6 +187,7 @@ struct wpa_sm {
+ 	struct wpabuf *dpp_z;
+ 	int dpp_pfs;
+ #endif /* CONFIG_DPP2 */
++	u8 skip_validate_ie;
+ };
+ 
+ 

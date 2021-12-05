@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# Copyright (c) 2015, 2020 The Linux Foundation. All rights reserved.
+# Copyright (C) 2011 OpenWrt.org
+#
+
+[ -e /etc/config/network ] && exit 0
+
+CFG=/etc/board.json
+
+. /lib/functions/uci-defaults.sh
+
+ipq807x_setup_interfaces()
+{
+	local board="$1"
+
+	case "$board" in
+	ap-hk01-c1|\
+	ap-hk01-c2|\
+	ap-hk01-c3|\
+	ap-hk01-c4|\
+	ap-hk01-c5|\
+	ap-hk01-c6|\
+	ap-hk06|\
+	ap-hk07|\
+	ap-hk09|\
+	ap-hk10-c1|\
+	ap-hk10-c2|\
+	ap-hk11-c1|\
+	ap-hk12|\
+	db-hk01|\
+	db-hk02|\
+	ap-ac01|\
+	ap-ac02|\
+	ap-oak02|\
+	ap-oak03)
+		ucidef_set_interfaces_lan_wan "eth1 eth2 eth3 eth4 eth5" "eth0"
+		;;
+	ap-hk14)
+		ucidef_set_interfaces_lan_wan "eth0 eth1 eth2 eth3" "eth4"
+		;;
+	ap-ac03|\
+	ap-ac04)
+		ucidef_set_interfaces_lan_wan "eth2 eth3 eth4" "eth1"
+		;;
+	ap-hk08|\
+	ap-hk02)
+		ucidef_set_interfaces_lan_wan "eth1 eth2" "eth0"
+		;;
+	*)
+		echo "Unsupported hardware. Network interfaces not intialized"
+		;;
+	esac
+}
+
+board_config_update
+board=$(board_name)
+ipq807x_setup_interfaces $board
+board_config_flush
+
+exit 0

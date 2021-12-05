@@ -1,0 +1,808 @@
+offload/os/linux/ol_ath_linux.c:3479:    tgt_cap->wlan_resource_config.dma_burst_size = 1;
+offload/os/linux/ol_ath_linux.c:3482:	tgt_cap->wlan_resource_config.mac_aggr_delim = ATH_OL_11AC_MAC_AGGR_DELIM;
+offload/os/linux/ol_ath_linux.c:3487:        tgt_cap->wlan_resource_config.max_frag_entries =
+offload/os/linux/ol_ath_linux.c:3488:            MIN(QCA_OL_11AC_TX_MAX_FRAGS, target_cap->max_frag_entry);
+offload/os/linux/ol_ath_linux.c:3489:        target_cap->max_frag_entry =
+offload/os/linux/ol_ath_linux.c:3490:                       tgt_cap->wlan_resource_config.max_frag_entries;
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2270:			i, mac_phy_cap->hw_mode_id, mac_phy_cap->pdev_id,
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2271:			mac_phy_cap->phy_id);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2274:			mac_phy_cap->supports_11g, mac_phy_cap->supports_11a,
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2275:			mac_phy_cap->supports_11n, mac_phy_cap->supports_11ac,
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2276:			mac_phy_cap->supports_11ax);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2278:					mac_phy_cap->supported_bands);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2280:					mac_phy_cap->ampdu_density);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2282:		if (mac_phy_cap->supported_bands &
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2285:					mac_phy_cap->max_bw_supported_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2287:					mac_phy_cap->ht_cap_info_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2289:					mac_phy_cap->vht_cap_info_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2291:					mac_phy_cap->vht_supp_mcs_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2293:					mac_phy_cap->he_cap_info_2G[0],
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2294:					mac_phy_cap->he_cap_info_2G[1]);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2296:					mac_phy_cap->he_supp_mcs_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2298:					mac_phy_cap->tx_chain_mask_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2300:					mac_phy_cap->rx_chain_mask_2G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2303:					mac_phy_cap->he_cap_phy_info_2G[0],
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2304:					mac_phy_cap->he_cap_phy_info_2G[1],
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2305:					mac_phy_cap->he_cap_phy_info_2G[2]);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2308:					mac_phy_cap->he_ppet2G.numss_m1,
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2309:					mac_phy_cap->he_ppet2G.ru_bit_mask);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2312:		if (mac_phy_cap->supported_bands &
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2315:					mac_phy_cap->max_bw_supported_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2317:					mac_phy_cap->ht_cap_info_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2319:					mac_phy_cap->vht_cap_info_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2321:					mac_phy_cap->vht_supp_mcs_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2323:					mac_phy_cap->he_cap_info_5G[0],
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2324:					mac_phy_cap->he_cap_info_5G[1]);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2326:					mac_phy_cap->he_supp_mcs_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2328:					mac_phy_cap->tx_chain_mask_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2330:					mac_phy_cap->rx_chain_mask_5G);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2333:					mac_phy_cap->he_cap_phy_info_5G[0],
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2334:					mac_phy_cap->he_cap_phy_info_5G[1],
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2335:					mac_phy_cap->he_cap_phy_info_5G[2]);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2338:				mac_phy_cap->he_ppet5G.numss_m1,
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2339:				mac_phy_cap->he_ppet5G.ru_bit_mask);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2342:					mac_phy_cap->chainmask_table_id);
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2370:	if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY)
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2371:		&& (mac_phy_cap->max_bw_supported_2G != WMI_HOST_CHAN_WIDTH_5)
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2372:		&& (mac_phy_cap->max_bw_supported_2G !=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2374:		if ((mac_phy_cap->max_bw_supported_2G >=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2382:		if (mac_phy_cap->max_bw_supported_2G >=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2401:	if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY)
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2402:		&& (mac_phy_cap->max_bw_supported_5G != WMI_HOST_CHAN_WIDTH_5)
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2403:		&& (mac_phy_cap->max_bw_supported_5G !=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2405:		if ((mac_phy_cap->max_bw_supported_5G >= WMI_HOST_CHAN_WIDTH_20)
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2412:		if (mac_phy_cap->max_bw_supported_5G >=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2424:		if ((mac_phy_cap->max_bw_supported_5G >=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2432:		if ((mac_phy_cap->max_bw_supported_5G >=
+offload/wlan/target_if/init_deinit/src/init_deinit_ops.c:2440:		if ((mac_phy_cap->max_bw_supported_5G >=
+offload/wlan/regdmn/ol_regdomain.c:131:    return reg_cap->wireless_modes;
+offload/wlan/regdmn/ol_regdomain.c:756:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:758:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:762:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:764:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:768:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:770:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:774:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:776:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:780:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:782:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:786:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:788:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:792:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:794:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:798:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:800:        reg_cap->wireless_modes |=
+offload/wlan/regdmn/ol_regdomain.c:804:    if (reg_cap->wireless_modes &
+offload/wlan/regdmn/ol_regdomain.c:806:        reg_cap->wireless_modes |=
+offload/wlan/lmac_offload_if/ol_if_dfs.c:288:        table_id = mac_phy_cap->chainmask_table_id;
+offload/wlan/lmac_offload_if/ol_if_vap.c:2612:    *max_tx_power = target_cap->hw_max_tx_power;
+offload/wlan/lmac_offload_if/ol_if_vap.c:2613:    *min_tx_power = target_cap->hw_min_tx_power;
+offload/wlan/lmac_offload_if/ol_if_ath_config.c:176:                table_id = mac_phy_cap->chainmask_table_id;
+offload/wlan/lmac_offload_if/ol_if_ath_config.c:263:        if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY) &&
+offload/wlan/lmac_offload_if/ol_if_ath_config.c:267:        if ((mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY) &&
+offload/wlan/lmac_offload_if/ol_if_ath_config.c:381:        table_id    = mac_phy_cap->chainmask_table_id;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1418:    reg_cap->low_2ghz_chan  =  mac_phy_cap->reg_cap_ext.low_2ghz_chan;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1419:    reg_cap->high_2ghz_chan =  mac_phy_cap->reg_cap_ext.high_2ghz_chan;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1420:    reg_cap->low_5ghz_chan  =  mac_phy_cap->reg_cap_ext.low_5ghz_chan;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1421:    reg_cap->high_5ghz_chan =  mac_phy_cap->reg_cap_ext.high_5ghz_chan;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1434:                    reg_cap->wireless_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1435:    wireless_modes_before_update = reg_cap->wireless_modes;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1436:    if (!(mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY)) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1440:        reg_cap->wireless_modes &= ~(wireless_5G_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1442:    if (!(mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY)) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1446:        reg_cap->wireless_modes &= ~(wireless_2G_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1450:                    reg_cap->wireless_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1451:    if (wireless_modes_before_update != reg_cap->wireless_modes) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1452:        ol_regdmn_update_pdev_wireless_modes(ic, reg_cap->wireless_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1469:              reg_cap->wireless_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1471:    reg_cap->wireless_modes = mac_phy_cap->reg_cap_ext.wireless_modes;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1473:    if (!(mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY)) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1477:        reg_cap->wireless_modes &= ~(wireless_5G_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1479:    if (!(mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY)) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1483:        reg_cap->wireless_modes &= ~(wireless_2G_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1488:              "Wireless_modes = %x after update", reg_cap->wireless_modes);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1498:    if (mac_phy_cap->supported_bands & WMI_HOST_WLAN_5G_CAPABILITY) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1499:        cap->ht_cap_info = mac_phy_cap->ht_cap_info_5G;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1500:        cap->vht_cap_info = mac_phy_cap->vht_cap_info_5G;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1501:        cap->vht_supp_mcs = mac_phy_cap->vht_supp_mcs_5G;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1502:    } else if (mac_phy_cap->supported_bands & WMI_HOST_WLAN_2G_CAPABILITY) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:1503:        cap->ht_cap_info = mac_phy_cap->ht_cap_info_2G;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1504:        cap->vht_cap_info = mac_phy_cap->vht_cap_info_2G;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1505:        cap->vht_supp_mcs = mac_phy_cap->vht_supp_mcs_2G;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1557:       chain_mask = ((1 << cap->num_rf_chains) - 1);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1562:               (mac_phy_cap->supported_bands &
+offload/wlan/lmac_offload_if/ol_if_ath.c:1564:           ol_ath_populate_chainmask(ic, mac_phy_cap->tx_chain_mask_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:1565:                   mac_phy_cap->rx_chain_mask_5G);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1566:           cap->num_rf_chains = ic->ic_num_rx_chain;
+offload/wlan/lmac_offload_if/ol_if_ath.c:1568:               (mac_phy_cap->supported_bands &
+offload/wlan/lmac_offload_if/ol_if_ath.c:1570:           ol_ath_populate_chainmask(ic, mac_phy_cap->tx_chain_mask_2G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:1571:               mac_phy_cap->rx_chain_mask_2G);
+offload/wlan/lmac_offload_if/ol_if_ath.c:1572:           cap->num_rf_chains = ic->ic_num_rx_chain;
+offload/wlan/lmac_offload_if/ol_if_ath.c:2111:    if (mac_phy_cap->supports_11ax) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:2113:        if (mac_phy_cap->supported_bands == WMI_HOST_WLAN_5G_CAPABILITY) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:2116:            ol_ath_populate_he_caps(ic, mac_phy_cap->he_cap_info_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:2117:                    &mac_phy_cap->he_supp_mcs_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:2118:                    mac_phy_cap->he_cap_phy_info_5G, sizeof(mac_phy_cap->he_cap_phy_info_5G),
+offload/wlan/lmac_offload_if/ol_if_ath.c:2119:                    &mac_phy_cap->he_ppet5G, &mac_phy_cap->he_cap_info_internal);
+offload/wlan/lmac_offload_if/ol_if_ath.c:2121:        } else if (mac_phy_cap->supported_bands == WMI_HOST_WLAN_2G_CAPABILITY) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:2124:            ol_ath_populate_he_caps(ic, mac_phy_cap->he_cap_info_2G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:2125:                    &mac_phy_cap->he_supp_mcs_2G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:2126:                    mac_phy_cap->he_cap_phy_info_2G, sizeof(mac_phy_cap->he_cap_phy_info_2G),
+offload/wlan/lmac_offload_if/ol_if_ath.c:2127:                    &mac_phy_cap->he_ppet2G, &mac_phy_cap->he_cap_info_internal);
+offload/wlan/lmac_offload_if/ol_if_ath.c:2131:               5G HE caps", mac_phy_cap->supported_bands);
+offload/wlan/lmac_offload_if/ol_if_ath.c:2133:            ol_ath_populate_he_caps(ic, mac_phy_cap->he_cap_info_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:2134:                    &mac_phy_cap->he_supp_mcs_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:2135:                    mac_phy_cap->he_cap_phy_info_5G, sizeof(mac_phy_cap->he_cap_phy_info_5G),
+offload/wlan/lmac_offload_if/ol_if_ath.c:2136:                    &mac_phy_cap->he_ppet5G, &mac_phy_cap->he_cap_info_internal);
+offload/wlan/lmac_offload_if/ol_if_ath.c:2457:                wmm_vparams[ac].acm = muedcap->muedca_acm;
+offload/wlan/lmac_offload_if/ol_if_ath.c:2458:                wmm_vparams[ac].aifs = muedcap->muedca_aifsn;
+offload/wlan/lmac_offload_if/ol_if_ath.c:2459:                wmm_vparams[ac].cwmin = ATH_EXPONENT_TO_VALUE(muedcap->muedca_ecwmin);
+offload/wlan/lmac_offload_if/ol_if_ath.c:2460:                wmm_vparams[ac].cwmax = ATH_EXPONENT_TO_VALUE(muedcap->muedca_ecwmax);
+offload/wlan/lmac_offload_if/ol_if_ath.c:2461:                wmm_vparams[ac].mu_edca_timer = muedcap->muedca_timer;
+offload/wlan/lmac_offload_if/ol_if_ath.c:6810:        if (mac_phy_cap->supported_bands == WMI_HOST_WLAN_5G_CAPABILITY) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:6816:        } else if (mac_phy_cap->supported_bands == WMI_HOST_WLAN_2G_CAPABILITY) {
+offload/wlan/lmac_offload_if/ol_if_ath.c:6824:                         mac_phy_cap->supported_bands);
+offload/wlan/lmac_offload_if/ol_if_ath.c:6832:    scn->max_tx_power = target_cap->hw_max_tx_power;
+offload/wlan/lmac_offload_if/ol_if_ath.c:6833:    scn->min_tx_power = target_cap->hw_min_tx_power;
+offload/wlan/lmac_offload_if/ol_if_ath.c:7131:    scn->max_tx_power  = target_cap->hw_max_tx_power;
+offload/wlan/lmac_offload_if/ol_if_ath.c:7132:    scn->min_tx_power  = target_cap->hw_min_tx_power;
+offload/wlan/lmac_offload_if/ol_if_ath.c:7194:            ol_ath_update_ht_caps(ic, mac_phy_cap->ht_cap_info_2G);
+offload/wlan/lmac_offload_if/ol_if_ath.c:7195:            ol_ath_update_vht_caps(ic, mac_phy_cap->vht_cap_info_2G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:7196:                    mac_phy_cap->vht_supp_mcs_2G);
+offload/wlan/lmac_offload_if/ol_if_ath.c:7197:            ol_ath_populate_he_caps(ic, mac_phy_cap->he_cap_info_2G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:7198:                    &mac_phy_cap->he_supp_mcs_2G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:7199:                    mac_phy_cap->he_cap_phy_info_2G, sizeof(mac_phy_cap->he_cap_phy_info_2G),
+offload/wlan/lmac_offload_if/ol_if_ath.c:7200:                    &mac_phy_cap->he_ppet2G, &mac_phy_cap->he_cap_info_internal);
+offload/wlan/lmac_offload_if/ol_if_ath.c:7208:            ol_ath_update_ht_caps(ic, mac_phy_cap->ht_cap_info_5G);
+offload/wlan/lmac_offload_if/ol_if_ath.c:7209:            ol_ath_update_vht_caps(ic, mac_phy_cap->vht_cap_info_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:7210:                    mac_phy_cap->vht_supp_mcs_5G);
+offload/wlan/lmac_offload_if/ol_if_ath.c:7211:            ol_ath_populate_he_caps(ic, mac_phy_cap->he_cap_info_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:7212:                    &mac_phy_cap->he_supp_mcs_5G,
+offload/wlan/lmac_offload_if/ol_if_ath.c:7213:                    mac_phy_cap->he_cap_phy_info_5G, sizeof(mac_phy_cap->he_cap_phy_info_5G),
+offload/wlan/lmac_offload_if/ol_if_ath.c:7214:                    &mac_phy_cap->he_ppet5G, &mac_phy_cap->he_cap_info_internal);
+cmn_dev/target_if/regulatory/src/target_if_reg.c:547:	if (!(reg_cap->wireless_modes & WMI_HOST_REGDMN_MODE_11A)) {
+cmn_dev/target_if/regulatory/src/target_if_reg.c:548:		reg_cap->low_5ghz_chan = 0;
+cmn_dev/target_if/regulatory/src/target_if_reg.c:549:		reg_cap->high_5ghz_chan = 0;
+cmn_dev/target_if/regulatory/src/target_if_reg.c:552:	if (!(reg_cap->wireless_modes &
+cmn_dev/target_if/regulatory/src/target_if_reg.c:554:		reg_cap->low_2ghz_chan = 0;
+cmn_dev/target_if/regulatory/src/target_if_reg.c:555:		reg_cap->high_2ghz_chan = 0;
+cmn_dev/target_if/regulatory/src/target_if_reg.c:559:			reg_cap->phy_id,
+cmn_dev/target_if/regulatory/src/target_if_reg.c:560:			reg_cap->low_2ghz_chan,
+cmn_dev/target_if/regulatory/src/target_if_reg.c:561:			reg_cap->high_2ghz_chan,
+cmn_dev/target_if/regulatory/src/target_if_reg.c:562:			reg_cap->low_5ghz_chan,
+cmn_dev/target_if/regulatory/src/target_if_reg.c:563:			reg_cap->high_5ghz_chan);
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:183:	hw_mode_id = hw_cap->hw_mode_id;
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:184:	phy_bit_map = hw_cap->phy_id_map;
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:204:					= hw_cap->hw_mode_config_type;
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:714:					mac_phy_cap->phy_idx,
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:722:			mac_phy_cap->reg_cap_ext.wireless_modes |=
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:845:	return ((hal_cap->wireless_modes &
+cmn_dev/target_if/init_deinit/src/service_ready_util.c:852:	return ((hal_cap->wireless_modes &
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:361:		if (mac_phy_cap->supported_bands ==
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:366:			band_to_mac[i].pdev_id = mac_phy_cap->pdev_id;
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:372:		} else if (mac_phy_cap->supported_bands ==
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:374:			reg_cap[mac_phy_cap->phy_id].low_5ghz_chan = 0;
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:375:			reg_cap[mac_phy_cap->phy_id].high_5ghz_chan = 0;
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:380:			band_to_mac[i].pdev_id = mac_phy_cap->pdev_id;
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:390:		} else if (mac_phy_cap->supported_bands ==
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:392:			reg_cap[mac_phy_cap->phy_id].low_2ghz_chan = 0;
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:393:			reg_cap[mac_phy_cap->phy_id].high_2ghz_chan = 0;
+cmn_dev/target_if/init_deinit/src/init_cmd_api.c:398:			band_to_mac[i].pdev_id = mac_phy_cap->pdev_id;
+cmn_dev/target_if/spectral/target_if_spectral.c:228:		agile_cap->agile_spectral_cap  = false;
+cmn_dev/target_if/spectral/target_if_spectral.c:229:		agile_cap->agile_spectral_cap_160 = false;
+cmn_dev/target_if/spectral/target_if_spectral.c:230:		agile_cap->agile_spectral_cap_80p80 = false;
+cmn_dev/target_if/spectral/target_if_spectral.c:248:	table_id = mac_phy_cap->chainmask_table_id;
+cmn_dev/target_if/spectral/target_if_spectral.c:258:		agile_cap->agile_spectral_cap |=
+cmn_dev/target_if/spectral/target_if_spectral.c:260:		agile_cap->agile_spectral_cap_160 |=
+cmn_dev/target_if/spectral/target_if_spectral.c:264:	agile_cap->agile_spectral_cap_80p80 = agile_cap->agile_spectral_cap_160;
+cmn_dev/target_if/spectral/target_if_spectral.c:1898:	pcap->phydiag_cap = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1899:	pcap->radar_cap = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1900:	pcap->spectral_cap = wlan_pdev_nif_feat_ext_cap_get(
+cmn_dev/target_if/spectral/target_if_spectral.c:1902:	pcap->advncd_spectral_cap = pcap->spectral_cap;
+cmn_dev/target_if/spectral/target_if_spectral.c:1903:	pcap->hw_gen = spectral->spectral_gen;
+cmn_dev/target_if/spectral/target_if_spectral.c:1905:	pcap->agile_spectral_cap = !wlan_pdev_nif_feat_ext_cap_get(
+cmn_dev/target_if/spectral/target_if_spectral.c:1907:	pcap->agile_spectral_cap_160 = !wlan_pdev_nif_feat_ext_cap_get(
+cmn_dev/target_if/spectral/target_if_spectral.c:1909:	pcap->agile_spectral_cap_80p80 = !wlan_pdev_nif_feat_ext_cap_get(
+cmn_dev/target_if/spectral/target_if_spectral.c:1916:				pcap->is_scaling_params_populated = true;
+cmn_dev/target_if/spectral/target_if_spectral.c:1917:				pcap->formula_id =
+cmn_dev/target_if/spectral/target_if_spectral.c:1919:				pcap->low_level_offset =
+cmn_dev/target_if/spectral/target_if_spectral.c:1921:				pcap->high_level_offset =
+cmn_dev/target_if/spectral/target_if_spectral.c:1923:				pcap->rssi_thr =
+cmn_dev/target_if/spectral/target_if_spectral.c:1925:				pcap->default_agc_max_gain =
+cmn_dev/target_if/spectral/target_if_spectral.c:1932:	pcap->num_detectors_20mhz = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1933:	pcap->num_detectors_40mhz = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1934:	pcap->num_detectors_80mhz = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1938:		pcap->num_detectors_160mhz = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1939:		pcap->num_detectors_80p80mhz = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:1941:		pcap->num_detectors_160mhz = 2;
+cmn_dev/target_if/spectral/target_if_spectral.c:1942:		pcap->num_detectors_80p80mhz = 2;
+cmn_dev/target_if/spectral/target_if_spectral.c:2390:	pcap->phydiag_cap = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:2397:	pcap->radar_cap = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:2405:	pcap->spectral_cap = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:2411:		pcap->advncd_spectral_cap = 1;
+cmn_dev/target_if/spectral/target_if_spectral.c:4643:	table_id = mac_phy_cap->chainmask_table_id;
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:103:				mod_param->dbr_ring_cap->ring_elems_min =
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:105:				mod_param->dbr_ring_cap->min_buf_size =
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:107:				mod_param->dbr_ring_cap->min_buf_align =
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1043:			dbr_ring_cap->min_buf_size);
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1048:					       dbr_ring_cap->min_buf_size,
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1055:	QDF_ASSERT(!((uint64_t)paddr % dbr_ring_cap->min_buf_align));
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1098:			&dbr_ring_cap->min_buf_size, &buf_vaddr_unaligned,
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1100:			dbr_ring_cap->min_buf_align);
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1174:	num_entries = dbr_ring_cap->ring_elems_min > max_entries ?
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1175:			max_entries : dbr_ring_cap->ring_elems_min;
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1227:	dbr_ring_cfg->buf_size = dbr_ring_cap->min_buf_size;
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1315:	dbr_cfg_req.num_elems = dbr_ring_cap->ring_elems_min;
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1316:	dbr_cfg_req.buf_size = dbr_ring_cap->min_buf_size;
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1638:				    dbr_ring_cap->min_buf_size);
+cmn_dev/target_if/direct_buf_rx/src/target_if_direct_buf_rx_main.c:1931:			dbr_ring_cap->min_buf_size);
+cmn_dev/umac/scan/dispatcher/src/wlan_scan_utils_api.c:393:		ht_cap = le16toh(htcap->hc_cap);
+cmn_dev/umac/scan/dispatcher/src/wlan_scan_utils_api.c:492:		ht_cap = le16toh(htcap->hc_cap);
+cmn_dev/umac/scan/dispatcher/src/wlan_scan_utils_api.c:1378:		if (htcap->mcsset[3])
+cmn_dev/umac/scan/dispatcher/src/wlan_scan_utils_api.c:1381:		if (htcap->mcsset[2])
+cmn_dev/umac/scan/dispatcher/src/wlan_scan_utils_api.c:1384:		if (htcap->mcsset[1])
+cmn_dev/umac/scan/dispatcher/inc/wlan_scan_utils_api.h:1424:	if (ext_cap->ext_cap_len <= ext_caps_byte)
+cmn_dev/umac/scan/dispatcher/inc/wlan_scan_utils_api.h:1428:		((ext_cap->ext_caps[ext_caps_byte] >> ext_caps_bit_pos) & 0x1);
+cmn_dev/umac/mlme/connection_mgr/core/src/wlan_cm_bss_scoring.c:1019:				  (bss_vht_cap->rx_mcs_map & 0xC0) >> 6);
+cmn_dev/umac/mlme/connection_mgr/core/src/wlan_cm_bss_scoring.c:1023:				  (bss_vht_cap->rx_mcs_map & 0x30) >> 4);
+cmn_dev/umac/mlme/connection_mgr/core/src/wlan_cm_bss_scoring.c:1027:				  (bss_vht_cap->rx_mcs_map & 0x0C) >> 2);
+cmn_dev/umac/mlme/connection_mgr/core/src/wlan_cm_bss_scoring.c:1030:		mcs_map = QDF_MIN(mcs_map, (bss_vht_cap->rx_mcs_map & 0x03));
+cmn_dev/umac/mlme/connection_mgr/core/src/wlan_cm_bss_scoring.c:1052:	ampdu_param = (tSirMacHTParametersInfo *)&htcap->ampdu_param;
+cmn_dev/umac/mlme/connection_mgr/core/src/wlan_cm_bss_scoring.c:1542:	if (vht_cap && vht_cap->su_beam_former)
+cmn_dev/wmi/src/wmi_unified_tlv.c:9672:	cap->ht_cap_info |= ev_target_cap & (
+cmn_dev/wmi/src/wmi_unified_tlv.c:9686:		cap->ht_cap_info |= WMI_HOST_HT_CAP_RX_LDPC |
+cmn_dev/wmi/src/wmi_unified_tlv.c:9712:	cap->phy_capability = ev->phy_capability;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9713:	cap->max_frag_entry = ev->max_frag_entry;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9714:	cap->num_rf_chains = ev->num_rf_chains;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9716:	cap->vht_cap_info = ev->vht_cap_info;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9717:	cap->vht_supp_mcs = ev->vht_supp_mcs;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9718:	cap->hw_min_tx_power = ev->hw_min_tx_power;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9719:	cap->hw_max_tx_power = ev->hw_max_tx_power;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9720:	cap->sys_cap_info = ev->sys_cap_info;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9721:	cap->min_pkt_size_enable = ev->min_pkt_size_enable;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9722:	cap->max_bcn_ie_size = ev->max_bcn_ie_size;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9723:	cap->max_num_scan_channels = ev->max_num_scan_channels;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9724:	cap->max_supported_macs = ev->max_supported_macs;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9725:	cap->wmi_fw_sub_feat_caps = ev->wmi_fw_sub_feat_caps;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9726:	cap->txrx_chainmask = ev->txrx_chainmask;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9727:	cap->default_dbs_hw_mode_index = ev->default_dbs_hw_mode_index;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9728:	cap->num_msdu_desc = ev->num_msdu_desc;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9729:	cap->fw_version = ev->fw_build_vers;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9731:	cap->fw_version_1 = 0;
+cmn_dev/wmi/src/wmi_unified_tlv.c:9919:	cap->wireless_modes = convert_wireless_modes_tlv(
+cmn_dev/wmi/src/wmi_unified_tlv.c:11060:			param_buf->nan_cap->max_ndp_sessions;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11355:	param->phy_id = ext_reg_cap->phy_id;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11356:	param->eeprom_reg_domain = ext_reg_cap->eeprom_reg_domain;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11357:	param->eeprom_reg_domain_ext = ext_reg_cap->eeprom_reg_domain_ext;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11358:	param->regcap1 = ext_reg_cap->regcap1;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11359:	param->regcap2 = ext_reg_cap->regcap2;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11361:						ext_reg_cap->wireless_modes);
+cmn_dev/wmi/src/wmi_unified_tlv.c:11362:	param->low_2ghz_chan = ext_reg_cap->low_2ghz_chan;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11363:	param->high_2ghz_chan = ext_reg_cap->high_2ghz_chan;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11364:	param->low_5ghz_chan = ext_reg_cap->low_5ghz_chan;
+cmn_dev/wmi/src/wmi_unified_tlv.c:11365:	param->high_5ghz_chan = ext_reg_cap->high_5ghz_chan;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:745:	       sizeof(wmi_channel) * in_peer_cap->peer_chanlen;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:775:	WMITLV_SET_HDR(&peer_cap->tlv_header,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:779:	if ((in_peer_cap->peer_uapsd_queue & 0x08) >> 3)
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:781:	if ((in_peer_cap->peer_uapsd_queue & 0x04) >> 2)
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:783:	if ((in_peer_cap->peer_uapsd_queue & 0x02) >> 1)
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:785:	if (in_peer_cap->peer_uapsd_queue & 0x01)
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:791:	WMI_SET_TDLS_PEER_SP_UAPSD(peer_cap, in_peer_cap->peer_max_sp);
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:793:	peer_cap->buff_sta_support = in_peer_cap->peer_buff_sta_support;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:794:	peer_cap->off_chan_support = in_peer_cap->peer_off_chan_support;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:795:	peer_cap->peer_curr_operclass = in_peer_cap->peer_curr_operclass;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:799:	peer_cap->self_curr_operclass = in_peer_cap->opclass_for_prefoffchan;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:800:	peer_cap->peer_chan_len = in_peer_cap->peer_chanlen;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:801:	peer_cap->peer_operclass_len = in_peer_cap->peer_oper_classlen;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:803:	wmi_debug("peer_operclass_len: %d", peer_cap->peer_operclass_len);
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:805:		peer_cap->peer_operclass[i] = in_peer_cap->peer_oper_class[i];
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:808:			   (uint8_t *)peer_cap->peer_operclass,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:811:	peer_cap->is_peer_responder = in_peer_cap->is_peer_responder;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:812:	peer_cap->pref_offchan_freq = in_peer_cap->pref_offchan_freq;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:813:	peer_cap->pref_offchan_num = in_peer_cap->pref_off_channum;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:814:	peer_cap->pref_offchan_bw = in_peer_cap->pref_off_chan_bandwidth;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:820:		 peer_cap->peer_qos, peer_cap->buff_sta_support,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:821:		 peer_cap->off_chan_support, peer_cap->peer_curr_operclass,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:822:		 peer_cap->self_curr_operclass, peer_cap->peer_chan_len,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:823:		 peer_cap->peer_operclass_len, peer_cap->is_peer_responder,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:824:		 peer_cap->pref_offchan_num, peer_cap->pref_offchan_bw,
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:825:		 peer_cap->pref_offchan_freq);
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:832:		       in_peer_cap->peer_chanlen);
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:835:	in_chan_info = in_peer_cap->peer_chan;
+cmn_dev/wmi/src/wmi_unified_sta_tlv.c:837:	for (i = 0; i < in_peer_cap->peer_chanlen; ++i) {
+umac/rrm/ieee80211_rrm_ie.c:688:        rrmcap->id = IEEE80211_ELEMID_RRM;
+umac/rrm/ieee80211_rrm_ie.c:689:        rrmcap->len = rrmcap_len - 2;
+umac/rrm/ieee80211_rrm_ie.c:690:        rrmcap->lnk_meas = 1;
+umac/rrm/ieee80211_rrm_ie.c:691:        rrmcap->neig_rpt = 1;
+umac/rrm/ieee80211_rrm_ie.c:692:        rrmcap->bcn_passive = 1;
+umac/rrm/ieee80211_rrm_ie.c:693:        rrmcap->bcn_active = 1;
+umac/rrm/ieee80211_rrm_ie.c:694:        rrmcap->bcn_table = 1;
+umac/rrm/ieee80211_rrm_ie.c:695:        rrmcap->tsm_meas = 1;
+umac/rrm/ieee80211_rrm_ie.c:696:        rrmcap->trig_tsm_meas = 1;
+umac/rrm/ieee80211_rrm_ie.c:697:        rrmcap->lci_meas = 1;
+umac/rrm/ieee80211_rrm_ie.c:698:        rrmcap->civ_loc_meas = 1;
+umac/rrm/ieee80211_rrm_ie.c:699:        rrmcap->ftm_range_report = 1;
+umac/rrm/ieee80211_rrm_ie.c:702:            rrmcap->ap_chan_rpt = 1;
+umac/rrm/ieee80211_rrm_ie.c:853:    fr_vhtcap->vhtcap_info = qdf_htonl(nr_info->nr_vhtcaps.vhtcap_info);
+umac/rrm/ieee80211_rrm_ie.c:854:    fr_vhtcap->mcs = qdf_htons(nr_info->nr_vhtcaps.mcs);
+umac/rrm/ieee80211_rrm_ie.c:855:    fr_vhtcap->rx_highest_rate = qdf_htons(nr_info->nr_vhtcaps.rx_highest_rate);
+umac/rrm/ieee80211_rrm_ie.c:856:    fr_vhtcap->tx_vht_mcs = qdf_htons(nr_info->nr_vhtcaps.tx_vht_mcs);
+umac/rrm/ieee80211_rrm_ie.c:857:    fr_vhtcap->tx_highest_rate = qdf_htons(nr_info->nr_vhtcaps.tx_highest_rate);
+umac/rrm/ieee80211_rrm_ie.c:930:    fr_htcap->htcap_info = qdf_htons(nr_info->nr_ht_cap.htcap_info);
+umac/rrm/ieee80211_rrm_ie.c:931:    fr_htcap->ampdu_param = nr_info->nr_ht_cap.ampdu_param;
+umac/rrm/ieee80211_rrm_ie.c:932:    memcpy(&fr_htcap->mcs, &nr_info->nr_ht_cap.mcs, IEEE80211_MAX_NR_MCS_SET);
+umac/rrm/ieee80211_rrm_ie.c:933:    fr_htcap->ht_extcap = qdf_htons(nr_info->nr_ht_cap.ht_extcap);
+umac/rrm/ieee80211_rrm_ie.c:934:    fr_htcap->txbeam_caps = qdf_htonl(nr_info->nr_ht_cap.txbeam_caps);
+umac/rrm/ieee80211_rrm_ie.c:935:    fr_htcap->asel_caps = nr_info->nr_ht_cap.asel_caps;
+umac/base/ieee80211_rateset.c:531:            htcap->hc_mcsset[IEEE80211_RX_MCS_2_STREAM_BYTE_OFFSET] &= 0x7f;
+umac/base/ieee80211_rateset.c:534:            if (htcap->hc_mcsset[i/8] & (1<<(i%8))) {
+umac/base/ieee80211_rateset.c:561:        if ((htcap->hc_mcsset[IEEE80211_TX_MCS_OFFSET] & IEEE80211_TX_MCS_SET) && (htcap->hc_mcsset[IEEE80211_TX_MCS_OFFSET] & IEEE80211_TX_RX_MCS_SET_NOT_EQUAL) ) {
+umac/base/ieee80211_rateset.c:562:            ni->ni_txstreams = ((htcap->hc_mcsset[IEEE80211_TX_MCS_OFFSET] & IEEE80211_TX_MAXIMUM_STREAMS_MASK) >> 2) + 1;
+umac/regdmn/ieee80211_regdmn.c:2227:    apcap->map_ap_radio_basic_capabilities_valid = 1;
+umac/son/core/src/wlan_son_main.c:2437:		apcap->hwcap.num_supported_op_classes = opclass;
+umac/mbo/ieee80211_mbo.c:492:    ieee80211_mbo_fill_header(&(cap->header),
+umac/mbo/ieee80211_mbo.c:495:    cap->cap_cellular = cellular_aware; /*Broadcasting this value in frame */
+umac/mbo/ieee80211_mbo.c:496:    cap->header.len =  sizeof(struct ieee80211_mbo_cap) -
+umac/mbo/ieee80211_mbo.c:1196:	cap->header.ie = OCE_ATTRIB_CAP_INDICATION;
+umac/mbo/ieee80211_mbo.c:1197:	cap->header.len = sizeof (struct ieee80211_oce_cap) - 2;
+umac/mbo/ieee80211_mbo.c:1198:	cap->ctrl_oce_rel = oce->oce_version_override;
+umac/mbo/ieee80211_mbo.c:1199:	cap->ctrl_sta_cfon = 0;
+umac/mbo/ieee80211_mbo.c:1200:	cap->ctrl_non_oce_ap_present = oce->non_oce_ap_present;
+umac/mbo/ieee80211_mbo.c:1201:	cap->ctrl_11b_ap_present = oce->only_11b_ap_present;
+umac/mbo/ieee80211_mbo.c:1202:	cap->ctrl_hlp_enabled = oce->usr_hlp;
+umac/mbo/ieee80211_mbo.c:1203:	cap->ctrl_reserved = 0;
+umac/scan/wlan_scan.c:487:        vhtcapinfo = le32toh(vhtcap->vht_cap_info);
+umac/include/ieee80211_regdmn.h:40:#define HW_OP_CLASS  apcap->hwcap.opclasses[(*total_n_sup_opclass)]
+umac/include/ieee80211_radiotap.h:366:    This MUST contain a valid data link type as defined in pcap-bpf.h from the libpcap distribution. If an official DLT registry is ever created by the libpcap development team, then it will supersede this list.
+umac/mlme/ieee80211_mlme.c:1456:                vap->iv_hotspot_xcaps = le32toh(elem_extcap->ext_capflags);
+umac/mlme/ieee80211_mlme.c:1457:                if (elem_extcap->elem_len > sizeof(vap->iv_hotspot_xcaps)) {
+umac/mlme/ieee80211_mlme.c:1458:                    vap->iv_hotspot_xcaps2 = le32toh(elem_extcap->ext_capflags2);
+umac/mlme/ieee80211_mlme.c:1462:                if ((elem_extcap->elem_len >= 11) &&
+umac/mlme/ieee80211_mlme.c:1463:                    (le16toh(elem_extcap->ext_capflags5) & IEEE80211_EXTCAPIE_BEACON_PROTECTION))
+umac/mlme/ieee80211_mlme.c:1527:                if ((elem_extcap->elem_len >= 11) &&
+umac/mlme/ieee80211_mlme.c:1528:                    (le16toh(elem_extcap->ext_capflags5) & IEEE80211_EXTCAPIE_BEACON_PROTECTION))
+umac/mlme/ieee80211_mgmt_ap.c:65:    r_rx_mcs = ((htcap->hc_mcsset[IEEE80211_RX_MCS_1_STREAM_BYTE_OFFSET] & 0xFF) |
+umac/mlme/ieee80211_mgmt_ap.c:66:               ((htcap->hc_mcsset[IEEE80211_RX_MCS_2_STREAM_BYTE_OFFSET] << 8) & 0xFF00) |
+umac/mlme/ieee80211_mgmt_ap.c:67:               ((htcap->hc_mcsset[IEEE80211_RX_MCS_3_STREAM_BYTE_OFFSET] << 16) & 0xFF0000) |
+umac/mlme/ieee80211_mgmt_ap.c:68:               ((htcap->hc_mcsset[IEEE80211_RX_MCS_4_STREAM_BYTE_OFFSET] << 24) & 0xFF000000));
+umac/mlme/ieee80211_mgmt_ap.c:84:    int rx_vhtrates = qdf_le16_to_cpu(vhtcap->rx_mcs_map);
+umac/mlme/wlan_mlme_dispatcher.c:866:	struct map_ap_wifi6_capabilities_t *wifi6cap = &apcap->wifi6cap;
+umac/mlme/wlan_mlme_dispatcher.c:884:	apcap->hwcap.max_supported_bss = wlan_pdev_get_max_vdev_count(pdev) - 1;
+umac/mlme/wlan_mlme_dispatcher.c:892:		apcap->map_ap_ht_capabilities_valid = 1;
+umac/mlme/wlan_mlme_dispatcher.c:894:		apcap->htcap.max_tx_nss = tx_streams;
+umac/mlme/wlan_mlme_dispatcher.c:895:		apcap->htcap.max_rx_nss = rx_streams;
+umac/mlme/wlan_mlme_dispatcher.c:898:			apcap->htcap.short_gi_support_20_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:902:			apcap->htcap.short_gi_support_40_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:906:			apcap->htcap.ht_support_40_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:919:		apcap->map_ap_vht_capabilities_valid = 1;
+umac/mlme/wlan_mlme_dispatcher.c:922:			apcap->vhtcap.supported_tx_mcs = ic->ic_vhtcap_max_mcs.tx_mcs_set.mcs_map;
+umac/mlme/wlan_mlme_dispatcher.c:923:			apcap->vhtcap.supported_rx_mcs = ic->ic_vhtcap_max_mcs.rx_mcs_set.mcs_map;
+umac/mlme/wlan_mlme_dispatcher.c:925:			apcap->vhtcap.supported_tx_mcs = vap->iv_vhtcap_max_mcs.tx_mcs_set.mcs_map;
+umac/mlme/wlan_mlme_dispatcher.c:926:			apcap->vhtcap.supported_rx_mcs = vap->iv_vhtcap_max_mcs.rx_mcs_set.mcs_map;
+umac/mlme/wlan_mlme_dispatcher.c:929:		apcap->vhtcap.max_tx_nss = tx_streams;
+umac/mlme/wlan_mlme_dispatcher.c:930:		apcap->vhtcap.max_rx_nss = rx_streams;
+umac/mlme/wlan_mlme_dispatcher.c:933:			apcap->vhtcap.short_gi_support_80_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:937:			apcap->vhtcap.short_gi_support_160_mhz_80p_80_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:941:			apcap->vhtcap.support_160_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:945:			apcap->vhtcap.support_80p_80_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:949:			apcap->vhtcap.su_beam_former_capable = 1;
+umac/mlme/wlan_mlme_dispatcher.c:953:			apcap->vhtcap.mu_beam_former_capable = 1;
+umac/mlme/wlan_mlme_dispatcher.c:958:		apcap->map_ap_he_capabilities_valid = 1;
+umac/mlme/wlan_mlme_dispatcher.c:960:		apcap->hecap.num_mcs_entries = MAP_MAX_HE_MCS;
+umac/mlme/wlan_mlme_dispatcher.c:966:			apcap->hecap.supported_he_mcs[2 * k] = he_rxmcsnssmap[k];
+umac/mlme/wlan_mlme_dispatcher.c:967:			apcap->hecap.supported_he_mcs[2 * k + 1] = he_txmcsnssmap[k];
+umac/mlme/wlan_mlme_dispatcher.c:970:		apcap->hecap.max_tx_nss = tx_streams;
+umac/mlme/wlan_mlme_dispatcher.c:971:		apcap->hecap.max_rx_nss = rx_streams;
+umac/mlme/wlan_mlme_dispatcher.c:973:		apcap->hecap.su_beam_former_capable = vap->iv_he_su_bfer;
+umac/mlme/wlan_mlme_dispatcher.c:974:		apcap->hecap.mu_beam_former_capable = vap->iv_he_mu_bfer;
+umac/mlme/wlan_mlme_dispatcher.c:975:		apcap->hecap.ul_mu_mimo_capable = vap->iv_he_ul_mumimo;
+umac/mlme/wlan_mlme_dispatcher.c:976:		apcap->hecap.ul_mu_mimo_ofdma_capable = vap->iv_he_ul_mumimo &
+umac/mlme/wlan_mlme_dispatcher.c:979:		apcap->hecap.dl_mu_mimo_ofdma_capable = vap->iv_he_dl_muofdma;
+umac/mlme/wlan_mlme_dispatcher.c:980:		apcap->hecap.ul_ofdma_capable = vap->iv_he_ul_muofdma;
+umac/mlme/wlan_mlme_dispatcher.c:981:		apcap->hecap.dl_ofdma_capable = vap->iv_he_dl_muofdma;
+umac/mlme/wlan_mlme_dispatcher.c:985:			apcap->hecap.support_160_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:990:			apcap->hecap.support_80p_80_mhz = 1;
+umac/mlme/wlan_mlme_dispatcher.c:993:		apcap->map_ap_wifi6_capabilites_valid = 1;
+umac/mlme/wlan_mlme_dispatcher.c:995:		wifi6cap->numofroles = 1;
+umac/mlme/wlan_mlme_dispatcher.c:999:		wifi6cap->role_cap[0].role = 0;
+umac/mlme/wlan_mlme_dispatcher.c:1006:			wifi6cap->role_cap[0].he160 = 1;
+umac/mlme/wlan_mlme_dispatcher.c:1014:			wifi6cap->role_cap[0].he80plus80 = 1;
+umac/mlme/wlan_mlme_dispatcher.c:1022:			wifi6cap->role_cap[0].supported_he_mcs[2 * k] = he_rxmcsnssmap[k];
+umac/mlme/wlan_mlme_dispatcher.c:1023:			wifi6cap->role_cap[0].supported_he_mcs[2 * k + 1] = he_txmcsnssmap[k];
+umac/mlme/wlan_mlme_dispatcher.c:1027:		wifi6cap->role_cap[0].subeamformer = vap->iv_he_su_bfer;
+umac/mlme/wlan_mlme_dispatcher.c:1029:		wifi6cap->role_cap[0].subeamformee = vap->iv_he_su_bfee;
+umac/mlme/wlan_mlme_dispatcher.c:1031:		wifi6cap->role_cap[0].mu_beam_former_status = vap->iv_he_mu_bfer;
+umac/mlme/wlan_mlme_dispatcher.c:1034:		wifi6cap->role_cap[0].beam_formee_sts_less_than_80supported =
+umac/mlme/wlan_mlme_dispatcher.c:1037:		wifi6cap->role_cap[0].beam_formee_sts_more_than_80supported =
+umac/mlme/wlan_mlme_dispatcher.c:1040:		wifi6cap->role_cap[0].ulmumimosupported = vap->iv_he_ul_mumimo;
+umac/mlme/wlan_mlme_dispatcher.c:1042:		wifi6cap->role_cap[0].ulofdmasupported = vap->iv_he_ul_muofdma;
+umac/mlme/wlan_mlme_dispatcher.c:1044:		wifi6cap->role_cap[0].dlofdmasupported = vap->iv_he_dl_muofdma;
+umac/mlme/wlan_mlme_dispatcher.c:1047:		wifi6cap->role_cap[0].maxuser_per_dl_mumimotxap = MAX_USER_PER_DL_MIMO_TX;
+umac/mlme/wlan_mlme_dispatcher.c:1050:		wifi6cap->role_cap[0].max_user_per_dl_mumimorxap = MAX_USER_PER_DL_MIMO_RX;
+umac/mlme/wlan_mlme_dispatcher.c:1052:		wifi6cap->role_cap[0].maxuserdlofdmatxap = MAX_USER_PER_DL_OFDM_TX;
+umac/mlme/wlan_mlme_dispatcher.c:1054:		wifi6cap->role_cap[0].maxuserdlofdmarxap = MAX_USER_PER_DL_OFDM_TX;
+umac/mlme/wlan_mlme_dispatcher.c:1056:		wifi6cap->role_cap[0].rtssupported = 1;
+umac/mlme/wlan_mlme_dispatcher.c:1058:		wifi6cap->role_cap[0].murtssupported = 0;
+umac/mlme/wlan_mlme_dispatcher.c:1060:		wifi6cap->role_cap[0].multibssidsupported = vap->iv_he_multi_bss;
+umac/mlme/wlan_mlme_dispatcher.c:1062:		wifi6cap->role_cap[0].muedcasupported = vap->iv_he_muedca;
+umac/mlme/wlan_mlme_dispatcher.c:1064:		wifi6cap->role_cap[0].twtrequestersupprted = vap->iv_he_twtreq;
+umac/mlme/wlan_mlme_dispatcher.c:1066:		wifi6cap->role_cap[0].twtrespondersupported = vap->iv_twt_rsp;
+umac/mlme/ieee80211_mgmt.c:1934:        htcapabilities = le16toh(htcap->hc_cap);
+umac/mlme/ieee80211_mgmt.c:1937:        vhtcapinfo = le32toh(vhtcap->vht_cap_info);
+umac/mlme/ieee80211_mgmt.c:1955:            hecap_phy_info = (uint8_t *) &(hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0]);
+umac/mlme/ieee80211_ie.c:1142:    htcap->hc_id      = IEEE80211_ELEMID_HTCAP_ANA;
+umac/mlme/ieee80211_ie.c:1143:    htcap->hc_len     = sizeof(struct ieee80211_ie_htcap) - 2;
+umac/mlme/ieee80211_ie.c:1145:    ie = &htcap->hc_ie;
+umac/mlme/ieee80211_ie.c:1163:    htcap->hc_id      = IEEE80211_ELEMID_VENDOR;
+umac/mlme/ieee80211_ie.c:1164:    htcap->hc_oui[0]  = (ATH_HTOUI >> 16) & 0xff;
+umac/mlme/ieee80211_ie.c:1165:    htcap->hc_oui[1]  = (ATH_HTOUI >>  8) & 0xff;
+umac/mlme/ieee80211_ie.c:1166:    htcap->hc_oui[2]  = ATH_HTOUI & 0xff;
+umac/mlme/ieee80211_ie.c:1167:    htcap->hc_ouitype = IEEE80211_ELEMID_HTCAP_VENDOR;
+umac/mlme/ieee80211_ie.c:1168:    htcap->hc_len     = sizeof(struct vendor_ie_htcap) - 2;
+umac/mlme/ieee80211_ie.c:1170:    ie = &htcap->hc_ie;
+umac/mlme/ieee80211_ie.c:1607:    uint8_t len = extcap->elem_len;
+umac/mlme/ieee80211_ie.c:1612:        ext_capflags = le32toh(extcap->ext_capflags);
+umac/mlme/ieee80211_ie.c:1615:            ext_capflags2 = le32toh(extcap->ext_capflags2);
+umac/mlme/ieee80211_ie.c:1618:                ext_capflags3 = extcap->ext_capflags3;
+umac/mlme/ieee80211_ie.c:1621:                    ext_capflags4 = extcap->ext_capflags4;
+umac/mlme/ieee80211_ie.c:5220:    htcapval    = le16toh(htcap->hc_cap);
+umac/mlme/ieee80211_ie.c:5221:    rx_mcs = htcap->hc_mcsset[IEEE80211_TX_MCS_OFFSET];
+umac/mlme/ieee80211_ie.c:5310:    ni->ni_maxampdu = ((1u << (IEEE80211_HTCAP_MAXRXAMPDU_FACTOR + htcap->hc_maxampdu)) - 1);
+umac/mlme/ieee80211_ie.c:5311:    ni->ni_mpdudensity = ieee80211_parse_mpdudensity(htcap->hc_mpdudensity);
+umac/mlme/ieee80211_ie.c:5317:	ni->ni_txbf.value = le32toh(htcap->hc_txbf.value);
+umac/mlme/ieee80211_ie.c:5374:    ni->ni_vhtcap = le32toh(vhtcap->vht_cap_info);
+umac/mlme/ieee80211_ie.c:5421:    ni->ni_vhtcap = le32toh(vhtcap->vht_cap_info);
+umac/mlme/ieee80211_ie.c:5457:    OS_MEMCPY(&tx_mcs_extnss_cap, &vhtcap->tx_mcs_extnss_cap, sizeof(u_int16_t));
+umac/mlme/ieee80211_ie.c:5485:    ampdu_len = (le32toh(vhtcap->vht_cap_info) & IEEE80211_VHTCAP_MAX_AMPDU_LEN_EXP) >> IEEE80211_VHTCAP_MAX_AMPDU_LEN_EXP_S;
+umac/mlme/ieee80211_ie.c:5488:    ni->ni_tx_vhtrates = le16toh(vhtcap->tx_mcs_map);
+umac/mlme/ieee80211_ie.c:5489:    ni->ni_rx_vhtrates = le16toh(vhtcap->rx_mcs_map);
+umac/mlme/ieee80211_ie.c:5491:    ni->ni_rx_max_rate = le16toh(vhtcap->rx_high_data_rate);
+umac/mlme/ieee80211_ie.c:7294:    vhtcap->elem_id   = IEEE80211_ELEMID_VHTCAP;
+umac/mlme/ieee80211_ie.c:7295:    vhtcap->elem_len  = sizeof(struct ieee80211_ie_vhtcap) - 2;
+umac/mlme/ieee80211_ie.c:7460:    vhtcap->vht_cap_info = htole32(vhtcap_info);
+umac/mlme/ieee80211_ie.c:7464:    vhtcap->rx_high_data_rate = htole16(vap->iv_vhtcap_max_mcs.rx_mcs_set.data_rate);
+umac/mlme/ieee80211_ie.c:7466:    vhtcap->tx_mcs_map = htole16(vap->iv_vhtcap_max_mcs.tx_mcs_set.mcs_map);
+umac/mlme/ieee80211_ie.c:7471:            vhtcap->rx_mcs_map = htole16(vap->iv_vhtcap_max_mcs.rx_mcs_set.mcs_map);
+umac/mlme/ieee80211_ie.c:7474:            vhtcap->rx_mcs_map = htole16(ni->ni_rx_vhtrates);
+umac/mlme/ieee80211_ie.c:7481:        vhtcap->rx_mcs_map = htole16(ni->ni_rx_vhtrates);
+umac/mlme/ieee80211_ie.c:7483:        vhtcap->rx_mcs_map = htole16(vap->iv_vhtcap_max_mcs.rx_mcs_set.mcs_map);
+umac/mlme/ieee80211_ie.c:7489:        vhtcap->rx_mcs_map = htole16(vap->iv_vhtcap_max_mcs.rx_mcs_set.mcs_map);
+umac/mlme/ieee80211_ie.c:7495:    OS_MEMCPY(&vhtcap->tx_mcs_extnss_cap, &temp, sizeof(u_int16_t));
+umac/mlme/ieee80211_ie.c:7507:    vht_interopcap->elem_id   = IEEE80211_ELEMID_VENDOR;
+umac/mlme/ieee80211_ie.c:7510:        vht_interopcap->elem_len  = sizeof(struct ieee80211_ie_interop_vhtcap) - 2;
+umac/mlme/ieee80211_ie.c:7514:        vht_interopcap->elem_len  = sizeof(struct ieee80211_ie_interop_vhtcap) - 9; /* Eliminating Vht op IE */
+umac/mlme/ieee80211_ie.c:7519:    memcpy(&vht_interopcap->vht_interop_oui,oui,sizeof(oui));
+umac/mlme/ieee80211_ie.c:7520:    vht_interopcap->sub_type = ni->ni_vhtintop_subtype;
+umac/mlme/ieee80211_ie.c:8357:    uint8_t *hecap_txrx   = hecap->hecap_txrx;
+umac/mlme/ieee80211_ie.c:8483:        "%s hecap->hecap_txrx[0]=%x hecap->hecap_txrx[1]=%x"
+umac/mlme/ieee80211_ie.c:8484:        " hecap->hecap_txrx[2]=%x hecap->hecap_txrx[3]=%x"
+umac/mlme/ieee80211_ie.c:8485:        " hecap->hecap_txrx[4]=%x hecap->hecap_txrx[5]=%x\n"
+umac/mlme/ieee80211_ie.c:8486:        " hecap->hecap_txrx[6]=%x hecap->hecap_txrx[7]=%x"
+umac/mlme/ieee80211_ie.c:8487:        " hecap->hecap_txrx[8]=%x hecap->hecap_txrx[9]=%x"
+umac/mlme/ieee80211_ie.c:8488:        " hecap->hecap_txrx[10]=%x hecap->hecap_txrx[11]=%x"
+umac/mlme/ieee80211_ie.c:8501:    hecap->elem_len -= unused_mcsnss_bytes;
+umac/mlme/ieee80211_ie.c:8625:    hecap->elem_id     = IEEE80211_ELEMID_EXTN;
+umac/mlme/ieee80211_ie.c:8629:    hecap->elem_len    = (sizeof(struct ieee80211_ie_hecap) -
+umac/mlme/ieee80211_ie.c:8631:    hecap->elem_id_ext = IEEE80211_ELEMID_EXT_HECAP;
+umac/mlme/ieee80211_ie.c:8641:    hecap_mac_info = &hecap->hecap_macinfo[0];
+umac/mlme/ieee80211_ie.c:8645:    qdf_mem_copy(&hecap->hecap_macinfo, &ic_he->hecap_macinfo,
+umac/mlme/ieee80211_ie.c:8646:                 qdf_min(sizeof(hecap->hecap_macinfo),
+umac/mlme/ieee80211_ie.c:9111:    hecap_phy_info = &hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0];
+umac/mlme/ieee80211_ie.c:9134:               "%s Dual Band Val=%x hecap->hecap_phyinfo[0]=%x \n",
+umac/mlme/ieee80211_ie.c:9135:                __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0]);
+umac/mlme/ieee80211_ie.c:9148:                "%s Channel Width Val=%x hecap->hecap_phyinfo[0]=%x \n",
+umac/mlme/ieee80211_ie.c:9149:                 __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0]);
+umac/mlme/ieee80211_ie.c:9157:              "%s RX Preamble Punc Val=%x hecap->hecap_phyinfo[1]=%x \n",
+umac/mlme/ieee80211_ie.c:9158:               __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:9166:              "%s DCM Val=%x hecap->hecap_phyinfo[1]=%x \n",
+umac/mlme/ieee80211_ie.c:9167:               __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:9178:                    "%s LDPC Val=%x hecap->hecap_phyinfo[1]=%x \n",
+umac/mlme/ieee80211_ie.c:9179:                     __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:9191:            "%s LTF & GI Val=%x hecap->hecap_phyinfo[1]=%x\n"
+umac/mlme/ieee80211_ie.c:9192:             ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:9205:            "%s Midamble Rx Max NSTS Val=%x hecap->hecap_phyinfo[0]=%x"
+umac/mlme/ieee80211_ie.c:9206:            " hecap->hecap_phyinfo[1]=%x\n"
+umac/mlme/ieee80211_ie.c:9208:             hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0],
+umac/mlme/ieee80211_ie.c:9209:             hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:9217:         "%s LTF & GI NDP  Val=%x hecap->hecap_phyinfo[2]=%x\n"
+umac/mlme/ieee80211_ie.c:9218:          ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9231:       "%s TXSTBC LTEQ 80 Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:9232:        ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9244:       "%s RXSTBC LTEQ 80 Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:9245:        ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9253:        "%s TX Doppler Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:9254:         ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9262:        "%s RX Doppler Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:9263:          ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9275:        "%s UL MU MIMO Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:9276:        ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9288:         "%s UL OFDMA Val=%x  hecap->hecap_phyinfo[2]=%x \n",
+umac/mlme/ieee80211_ie.c:9289:         __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:9304:        "%s TX DCM Val=%x  hecap->hecap_phyinfo[3]=%x \n",
+umac/mlme/ieee80211_ie.c:9305:        __func__, val,  hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:9313:        "%s RX DCM Val=%x  hecap->hecap_phyinfo[3]=%x \n",
+umac/mlme/ieee80211_ie.c:9314:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:9322:           "%s UL HE MU PPDU Val=%x hecap->hecap_phyinfo[3]=%x  \n"
+umac/mlme/ieee80211_ie.c:9323:               ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:9335:        "%s SU BFMR Val=%x hecap->hecap_phyinfo[3]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9336:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:9348:        "%s SU BFEE Val=%x hecap->hecap_phyinfo[4]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9349:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX4]);
+umac/mlme/ieee80211_ie.c:9366:        "%s MU BFMR Val=%x hecap->hecap_phyinfo[4]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9367:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX4]);
+umac/mlme/ieee80211_ie.c:9387:        "%s BFME STS LT 80 Mhz Val=%x hecap->hecap_phyinfo[4]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9388:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX4]);
+umac/mlme/ieee80211_ie.c:9414:        "%s BFME STS GT 80 Mhz Val=%x hecap->hecap_phyinfo[5]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9415:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX5]);
+umac/mlme/ieee80211_ie.c:9437:        "%s Noof Sound Dim LTEQ 80 Mhz Val=%x hecap->hecap_phyinfo[5]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9438:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX5]);
+umac/mlme/ieee80211_ie.c:9466:        "%s Noof Sound Dim GT 80 Mhz Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9467:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:9479:        "%s Ng16 SU Feedback Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9480:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:9492:        "%s Ng16 MU Feeback Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9493:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:9505:        "%s CB SZ 4_2 SU Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9506:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:9518:        "%s CB SZ 7_5 MU Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9519:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:9527:        "%s BF FB Trigg Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9528:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9536:        "%s HE ER SU PPDU Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9537:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9545:        "%s DL MUMIMO Par BW Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9546:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9555:        "%s PPE Thresh present Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9556:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9564:        "%s SRPS SR Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9565:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9573:        "%s Power Boost AR Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:9574:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9586:        "%s 4X HE-LTF & 0.8 GI HE PPDU Val=%x hecap->hecap_phyinfo[7]=%x \n",
+umac/mlme/ieee80211_ie.c:9587:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9599:        "%s MAX Nc=%x hecap->hecap_phyinfo[7]=%x \n", __func__,
+umac/mlme/ieee80211_ie.c:9600:        val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9614:        "%s STBC Tx GT 80MHz=%x hecap->hecap_phyinfo[7]=%x \n",
+umac/mlme/ieee80211_ie.c:9615:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9628:        "%s STBC Rx GT 80MHz=%x hecap->hecap_phyinfo[7]=%x \n",
+umac/mlme/ieee80211_ie.c:9629:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:9637:        "%s ERSU 4x LTF 800 ns GI=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9638:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9646:        "%s HE PPDU 20 in 40 MHZ 2G=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9647:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9655:        "%s HE PPDU 20 in 160 or 80+80 MHZ=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9656:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9664:        "%s HE PPDU 80 in 160 or 80+80 MHZ=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9665:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9673:        "%s ERSU 1x LTF 800 ns GI=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9674:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9687:        "%s Midamble Rx 2x and 1x LTF=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9688:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9698:        "%s DCM Max BW=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:9699:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:9708:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:9709:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:9717:        "%s Non- Triggered CQI Feedback=%x hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:9718:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:9731:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:9732:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:9741:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:9742:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:9751:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:9752:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:9765:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:9766:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:9816:            hecap->elem_len -= HECAP_PPET16_PPET8_MAX_SIZE - ppet_bytes;
+umac/mlme/ieee80211_ie.c:9822:        he_ppet = ((uint8_t *) hecap + (hecap->elem_len -
+umac/mlme/ieee80211_ie.c:9846:    hecaplen = hecap->elem_len + IEEE80211_IE_HDR_LEN;
+umac/mlme/ieee80211_ie.c:10566:    hecap_phy_ie = &hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0];
+umac/mlme/ieee80211_ie.c:10571:    qdf_mem_copy(&ni_he->hecap_macinfo, &hecap->hecap_macinfo,
+umac/mlme/ieee80211_ie.c:10572:                 qdf_min(sizeof(hecap->hecap_macinfo),
+umac/mlme/ieee80211_ie.c:10587:    hecap_mac_ie = &hecap->hecap_macinfo[HECAP_MACBYTE_IDX0];
+umac/mlme/ieee80211_ie.c:10644:               "%s NI Dual Band Val=%x hecap->hecap_phyinfo[0]=%x \n",
+umac/mlme/ieee80211_ie.c:10645:                __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0]);
+umac/mlme/ieee80211_ie.c:10656:          "hecap->hecap_phyinfo[0]=%x \n",
+umac/mlme/ieee80211_ie.c:10658:           hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX0]);
+umac/mlme/ieee80211_ie.c:10666:              "%s NI RX Preamble Punc Val=%x hecap->hecap_phyinfo[1]=%x \n",
+umac/mlme/ieee80211_ie.c:10667:               __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:10675:              "%s NI DCM Val=%x hecap->hecap_phyinfo[1]=%x \n",
+umac/mlme/ieee80211_ie.c:10676:               __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:10687:                    "%s NI LDPC Val=%x hecap->hecap_phyinfo[1]=%x \n",
+umac/mlme/ieee80211_ie.c:10688:                     __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:10696:            "%s NI LTF & GI Val=%x hecap->hecap_phyinfo[1]=%x \n"
+umac/mlme/ieee80211_ie.c:10697:            ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1]);
+umac/mlme/ieee80211_ie.c:10710:            "%s Midamble Rx Max NSTS Val=%x hecap->hecap_phyinfo[1]=%x"
+umac/mlme/ieee80211_ie.c:10711:            " hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10712:            ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX1],
+umac/mlme/ieee80211_ie.c:10713:            hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10721:         "%s NI LTF & GI NDP  Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10722:         ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10734:       "%s NI TXSTBC Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10735:        ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10747:       "%s NI RXSTBC Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10748:        ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10756:        "%s NI TX Doppler Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10757:         ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10765:        "%s NI RXDOPPLER Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10766:          ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10777:        "%s NI UL MU MIMO Val=%x hecap->hecap_phyinfo[2]=%x \n"
+umac/mlme/ieee80211_ie.c:10778:        ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10789:         "%s UL OFDMA Val=%x  hecap->hecap_phyinfo[2]=%x \n",
+umac/mlme/ieee80211_ie.c:10790:         __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX2]);
+umac/mlme/ieee80211_ie.c:10798:                "%s NI TX DCM Val=%x  hecap->hecap_phyinfo[3]=%x \n",
+umac/mlme/ieee80211_ie.c:10799:        __func__, val,  hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:10807:        "%s NI RX DCM Val=%x  hecap->hecap_phyinfo[3]=%x \n",
+umac/mlme/ieee80211_ie.c:10808:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:10816:           "%s NI UL HE MU PPDU Val=%x hecap->hecap_phyinfo[3]=%x  \n"
+umac/mlme/ieee80211_ie.c:10817:               ,__func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:10828:        "%s NI SU BFMR Val=%x hecap->hecap_phyinfo[3]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10829:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX3]);
+umac/mlme/ieee80211_ie.c:10840:        "%s NI SU BFEE Val=%x hecap->hecap_phyinfo[4]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10841:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX4]);
+umac/mlme/ieee80211_ie.c:10852:        "%s NI MU BFMR Val=%x hecap->hecap_phyinfo[4]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10853:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX4]);
+umac/mlme/ieee80211_ie.c:10861:        "%s NI BFME STS LT 80 Mhz Val=%x hecap->hecap_phyinfo[4]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10862:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX4]);
+umac/mlme/ieee80211_ie.c:10870:        "%s NI BFME STS GT 80 Mhz Val=%x hecap->hecap_phyinfo[5]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10871:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX5]);
+umac/mlme/ieee80211_ie.c:10879:        "%s NI Noof Sound Dim LT 80 Mhz Val=%x hecap->hecap_phyinfo[5]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10880:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX5]);
+umac/mlme/ieee80211_ie.c:10888:        "%s NI Noof Sound Dim GT 80 Mhz Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10889:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:10897:        "%s NI Ng16 SU Feedback Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10898:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:10906:        "%s NI Ng16 MU Feeback Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10907:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:10915:        "%s NI CB SZ 4_2 SU Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10916:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:10924:        "%s NI CB SZ 7_5 MU Val=%x hecap->hecap_phyinfo[6]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10925:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX6]);
+umac/mlme/ieee80211_ie.c:10933:        "%s NI BF FB Trigg Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10934:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10941:        "%s NI HE ER SU PPDU Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10942:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10950:        "%s NI DL MUMIMO Par BW Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10951:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10960:        "%s NI PPE Thresh present Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10961:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10969:        "%s NI SRPS SR Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10970:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10978:        "%s NI Power Boost AR Val=%x hecap->hecap_phyinfo[7]=%x \n",__func__,
+umac/mlme/ieee80211_ie.c:10979:         val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10987:        "%s NI 4X HE-LTF & 0.8 GI HE PPDU Val=%x hecap->hecap_phyinfo[7]=%x \n",
+umac/mlme/ieee80211_ie.c:10988:        __func__, val , hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:10996:        "%s MAX Nc=%x hecap->hecap_phyinfo[7]=%x \n", __func__,
+umac/mlme/ieee80211_ie.c:10997:        val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:11005:        "%s STBC Tx GT 80MHz=%x hecap->hecap_phyinfo[7]=%x \n",
+umac/mlme/ieee80211_ie.c:11006:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:11014:        "%s STBC Rx GT 80MHz=%x hecap->hecap_phyinfo[7]=%x \n",
+umac/mlme/ieee80211_ie.c:11015:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX7]);
+umac/mlme/ieee80211_ie.c:11023:        "%s ERSU 4x LTF 800 ns GI=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11024:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11032:        "%s HE PPDU 20 in 40 MHZ 2G=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11033:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11041:        "%s HE PPDU 20 in 160 or 80+80 MHZ=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11042:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11050:        "%s HE PPDU 80 in 160 or 80+80 MHZ=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11051:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11059:        "%s ERSU 1x LTF 800 ns GI=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11060:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11073:        "%s Midamble Rx 2x and 1x LTF=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11074:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11088:        "%s DCM Max BW=%x hecap->hecap_phyinfo[8]=%x \n",
+umac/mlme/ieee80211_ie.c:11089:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX8]);
+umac/mlme/ieee80211_ie.c:11098:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:11099:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:11107:        "%s Non- Triggered CQI Feedback=%x hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:11108:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:11117:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:11118:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:11127:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:11128:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:11137:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:11138:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:11147:        "hecap->hecap_phyinfo[9]=%x \n",
+umac/mlme/ieee80211_ie.c:11148:        __func__, val, hecap->hecap_phyinfo[HECAP_PHYBYTE_IDX9]);
+umac/mlme/ieee80211_ie.c:11156:                                           hecap->hecap_txrx,
+umac/mlme/ieee80211_ie.c:12275:    OS_MEMCPY(&tx_mcs_extnss_cap, &vhtcap->tx_mcs_extnss_cap, sizeof(u_int16_t));
+umac/mlme/ieee80211_mgmt_bss.c:1643:        ((sta_vhtcap->vht_cap_info &
+umac/mlme/ieee80211_mgmt_bss.c:1949:        (le32toh(vhtcap->vht_cap_info) & IEEE80211_VHTCAP_MU_BFORMEE)) {
+component_dev/wmi/src/wmi_unified_non_tlv.c:6850:	cap->ht_cap_info |= ev_target_cap & (
+component_dev/wmi/src/wmi_unified_non_tlv.c:6865:			cap->ht_cap_info |= WMI_HOST_HT_CAP_IBF_BFER;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6884:	cap->phy_capability = ev->phy_capability;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6885:	cap->max_frag_entry = ev->max_frag_entry;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6886:	cap->num_rf_chains = ev->num_rf_chains;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6888:	cap->vht_cap_info = ev->vht_cap_info;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6889:	cap->vht_supp_mcs = ev->vht_supp_mcs;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6890:	cap->hw_min_tx_power = ev->hw_min_tx_power;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6891:	cap->hw_max_tx_power = ev->hw_max_tx_power;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6892:	cap->sys_cap_info = ev->sys_cap_info;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6893:	cap->min_pkt_size_enable = ev->min_pkt_size_enable;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6894:	cap->max_bcn_ie_size = ev->max_bcn_ie_size;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6895:	cap->fw_version = ev->sw_version;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6896:	cap->fw_version_1 = ev->sw_version_1;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6899:	cap->max_num_scan_channels = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6900:	cap->max_supported_macs = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6901:	cap->wmi_fw_sub_feat_caps = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6902:	cap->txrx_chainmask = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6903:	cap->default_dbs_hw_mode_index = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6904:	cap->num_msdu_desc = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6979:	cap->wireless_modes = 0;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6982:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11A;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6985:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_TURBO;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6988:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11B;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6991:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_PUREG;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6994:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11G;
+component_dev/wmi/src/wmi_unified_non_tlv.c:6997:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_108G;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7000:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_108A;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7003:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_XR;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7006:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11A_HALF_RATE;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7009:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11A_QUARTER_RATE;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7012:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11NG_HT20;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7015:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11NA_HT20;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7018:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11NG_HT40PLUS;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7021:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11NG_HT40MINUS;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7024:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11NA_HT40PLUS;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7027:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11NA_HT40MINUS;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7030:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11AC_VHT20;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7033:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11AC_VHT40PLUS;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7036:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11AC_VHT40MINUS;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7039:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11AC_VHT80;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7042:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11AC_VHT160;
+component_dev/wmi/src/wmi_unified_non_tlv.c:7045:		cap->wireless_modes |= WMI_HOST_REGDMN_MODE_11AC_VHT80_80;
+component_dev/wmi/src/wmi_unified_non_tlv.c:8188:	rate_cap->ratecount[0] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8190:	rate_cap->ratecount[1] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8192:	rate_cap->ratecount[2] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8194:	rate_cap->ratecount[3] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8197:	if (rate_cap->ratecount[0]) {
+component_dev/wmi/src/wmi_unified_non_tlv.c:8200:				rate_cap->ratecode_legacy[htindex] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8212:			rate_cap->ratecode_20[htindex] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8215:			rate_cap->ratecode_40[htindex] =
+component_dev/wmi/src/wmi_unified_non_tlv.c:8218:			rate_cap->ratecode_80[htindex] =
+component_dev/wmi/src/wmi_unified_smart_ant_tlv.c:520:		rate_cap->ratecount[i] = ((ev->ratecount >> (i*8)) &
+component_dev/wmi/src/wmi_unified_smart_ant_tlv.c:525:	if (rate_cap->ratecount[0]) {
+component_dev/wmi/src/wmi_unified_smart_ant_tlv.c:536:				rate_cap->ratecode_legacy[htindex] =
+component_dev/wmi/src/wmi_unified_smart_ant_tlv.c:555:			rate_cap->ratecode_20[htindex] =
+component_dev/wmi/src/wmi_unified_smart_ant_tlv.c:557:			rate_cap->ratecode_40[htindex] =
+component_dev/wmi/src/wmi_unified_smart_ant_tlv.c:559:			rate_cap->ratecode_80[htindex] =
+component_dev/dp/wifi3.0/dp_tx_capture.c:532:	ppdu_stats_ms = ptr_tx_cap->ppdu_stats_ms;
+component_dev/dp/wifi3.0/dp_tx_capture.c:539:		       ptr_tx_cap->ppdu_stats_queue_depth);
+component_dev/dp/wifi3.0/dp_tx_capture.c:541:		       ptr_tx_cap->ppdu_stats_defer_queue_depth);
+component_dev/dp/wifi3.0/dp_tx_capture.c:543:		       ptr_tx_cap->pend_ppdu_dropped);
+component_dev/dp/wifi3.0/dp_tx_capture.c:545:		       ptr_tx_cap->peer_mismatch);
+component_dev/dp/wifi3.0/dp_tx_capture.c:547:		       ptr_tx_cap->ppdu_flush_count);
+component_dev/dp/wifi3.0/dp_tx_capture.c:549:		       ptr_tx_cap->msdu_threshold_drop);
+component_dev/dp/wifi3.0/dp_tx_capture.c:553:			if (ptr_tx_cap->ctl_mgmt_q[i][j].qlen)
+component_dev/dp/wifi3.0/dp_tx_capture.c:555:				i, j, ptr_tx_cap->ctl_mgmt_q[i][j].qlen);
+component_dev/dp/wifi3.0/dp_tx_capture.c:561:			if (ptr_tx_cap->retries_ctl_mgmt_q[i][j].qlen)
+component_dev/dp/wifi3.0/dp_tx_capture.c:564:				ptr_tx_cap->retries_ctl_mgmt_q[i][j].qlen);
+component_dev/dp/wifi3.0/dp_tx_capture.c:569:		if (!ptr_tx_cap->htt_frame_type[i])
+component_dev/dp/wifi3.0/dp_tx_capture.c:572:			       i, ptr_tx_cap->htt_frame_type[i]);
+component_dev/dp/wifi3.0/dp_tx_capture.c:3415:	ppdu_desc = ptr_tx_cap->dummy_ppdu_desc;
+component_dev/dp/wifi3.0/dp_tx_capture.c:3503:	ppdu_desc = ptr_tx_cap->dummy_ppdu_desc;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5709:	delta_ms = now_ms - ptr_tx_cap->last_processed_ms;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5724:	ptr_tx_cap->last_processed_ms = now_ms;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5759:			   ptr_tx_cap->last_processed_ms,
+component_dev/dp/wifi3.0/dp_tx_capture.c:5794:	qdf_spin_lock_bh(&ptr_tx_cap->ppdu_stats_lock);
+component_dev/dp/wifi3.0/dp_tx_capture.c:5795:	STAILQ_CONCAT(&ptr_tx_cap->ppdu_stats_defer_queue,
+component_dev/dp/wifi3.0/dp_tx_capture.c:5796:		      &ptr_tx_cap->ppdu_stats_queue);
+component_dev/dp/wifi3.0/dp_tx_capture.c:5797:	ptr_tx_cap->ppdu_stats_defer_queue_depth +=
+component_dev/dp/wifi3.0/dp_tx_capture.c:5798:		ptr_tx_cap->ppdu_stats_queue_depth;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5799:	ptr_tx_cap->ppdu_stats_queue_depth = 0;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5800:	qdf_spin_unlock_bh(&ptr_tx_cap->ppdu_stats_lock);
+component_dev/dp/wifi3.0/dp_tx_capture.c:5803:		STAILQ_EMPTY(&ptr_tx_cap->ppdu_stats_defer_queue);
+component_dev/dp/wifi3.0/dp_tx_capture.c:5827:	while (!STAILQ_EMPTY(&ptr_tx_cap->ppdu_stats_defer_queue)) {
+component_dev/dp/wifi3.0/dp_tx_capture.c:5829:			STAILQ_FIRST(&ptr_tx_cap->ppdu_stats_defer_queue);
+component_dev/dp/wifi3.0/dp_tx_capture.c:5834:				    &ptr_tx_cap->ppdu_stats_defer_queue,
+component_dev/dp/wifi3.0/dp_tx_capture.c:5847:			STAILQ_FIRST(&ptr_tx_cap->ppdu_stats_defer_queue);
+component_dev/dp/wifi3.0/dp_tx_capture.c:5848:		STAILQ_REMOVE_HEAD_UNTIL(&ptr_tx_cap->ppdu_stats_defer_queue,
+component_dev/dp/wifi3.0/dp_tx_capture.c:5854:		ptr_tx_cap->ppdu_stats_defer_queue_depth -= ppdu_cnt;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5881:		ptr_tx_cap->last_nbuf_ppdu_list = nbuf_ppdu_list;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5882:		ptr_tx_cap->last_nbuf_ppdu_list_arr_sz = ppdu_cnt;
+component_dev/dp/wifi3.0/dp_tx_capture.c:5884:		ptr_tx_cap->last_processed_ms =
+component_dev/dp/wifi3.0/dp_tx_capture.c:6958:	ptr_log_info = &ptr_tx_cap->log_info;
+component_dev/dp/wifi3.0/dp_tx_capture.c:7092:	ptr_log_info = &ptr_tx_cap->log_info;
+component_dev/dp/wifi3.0/dp_tx_capture.c:7125:	ptr_log_info = &ptr_tx_cap->log_info;
+component_dev/dp/wifi3.0/dp_tx_capture.c:7165:	ptr_log_info = &ptr_tx_cap->log_info;
+component_dev/dp/wifi3.0/dp_tx_capture.c:7243:	ptr_log_info = &ptr_tx_cap->log_info;
+component_dev/dp/wifi3.0/dp_tx_capture.c:7305:	ptr_log_info = &ptr_tx_cap->log_info;

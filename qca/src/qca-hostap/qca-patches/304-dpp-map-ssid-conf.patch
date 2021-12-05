@@ -1,0 +1,161 @@
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+index 202bceb..1198952 100644
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -391,8 +391,9 @@ static void hostapd_dpp_set_testing_options(struct hostapd_data *hapd,
+ 			os_strdup(hapd->dpp_discovery_override);
+ 	if (hapd->dpp_groups_override)
+ 		auth->groups_override = os_strdup(hapd->dpp_groups_override);
+-	auth->ignore_netaccesskey_mismatch =
+-		hapd->dpp_ignore_netaccesskey_mismatch;
++	if (hapd->dpp_ignore_netaccesskey_mismatch)
++		auth->ignore_netaccesskey_mismatch =
++			hapd->dpp_ignore_netaccesskey_mismatch;
+ #endif /* CONFIG_TESTING_OPTIONS */
+ }
+ 
+diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
+index ad9af37..eef23f2 100644
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -3101,6 +3101,7 @@ SM_STATE(WPA_PTK, PTKCALCNEGOTIATING)
+ 			   kde.dpp_kde[0], kde.dpp_kde[1]);
+ 		if (sm->wpa_key_mgmt == WPA_KEY_MGMT_DPP &&
+ 		    wpa_auth->conf.dpp_pfs != 2 &&
++		    !wpa_auth->conf.no_group_delay &&
+ 		    (kde.dpp_kde[1] & DPP_KDE_PFS_ALLOWED) &&
+ 		    !sm->dpp_z) {
+ 			wpa_printf(MSG_INFO,
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 5b468c2..c21fae1 100644
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -1187,6 +1187,10 @@ static int dpp_configuration_parse_helper(struct dpp_authentication *auth,
+ 		/* use a default SSID for legacy testing reasons */
+ 		os_memcpy(conf->ssid, "test", 4);
+ 		conf->ssid_len = 4;
++		if (!auth->dpp_map) {
++			os_memcpy(conf->ssid, "test", 4);
++			conf->ssid_len = 4;
++		}
+ #else /* CONFIG_TESTING_OPTIONS */
+ 		goto fail;
+ #endif /* CONFIG_TESTING_OPTIONS */
+@@ -1262,7 +1266,7 @@ static int dpp_configuration_parse_helper(struct dpp_authentication *auth,
+ 		os_memcpy(conf->csrattrs, pos, len);
+ 	}
+ 
+-	if (!dpp_configuration_valid(conf))
++	if (!auth->dpp_map && !dpp_configuration_valid(conf))
+ 		goto fail;
+ 
+ 	if (idx == 0) {
+@@ -2919,13 +2923,13 @@ static enum dpp_akm dpp_akm_from_str(const char *akm)
+ 		return DPP_AKM_PSK;
+ 	if (os_strcmp(akm, "sae") == 0)
+ 		return DPP_AKM_SAE;
+-	if (os_strcmp(akm, "psk+sae") == 0)
++	if (os_strcmp(akm, "psk+sae") == 0 || os_strcmp(akm, "sae+psk") == 0)
+ 		return DPP_AKM_PSK_SAE;
+ 	if (os_strcmp(akm, "dpp") == 0)
+ 		return DPP_AKM_DPP;
+ 	if (os_strcmp(akm, "dpp+sae") == 0)
+ 		return DPP_AKM_SAE_DPP;
+-	if (os_strcmp(akm, "dpp+psk+sae") == 0)
++	if (os_strcmp(akm, "dpp+psk+sae") == 0 || os_strcmp(akm, "dpp+sae+psk") == 0)
+ 		return DPP_AKM_PSK_SAE_DPP;
+ 	if (os_strcmp(akm, "dot1x") == 0)
+ 		return DPP_AKM_DOT1X;
+diff --git a/src/rsn_supp/wpa.c b/src/rsn_supp/wpa.c
+index 632dce4..538832e 100644
+--- a/src/rsn_supp/wpa.c
++++ b/src/rsn_supp/wpa.c
+@@ -1746,6 +1746,7 @@ static void wpa_supplicant_process_3_of_4(struct wpa_sm *sm,
+ 			   "DPP: peer Protocol Version %u Flags 0x%x",
+ 			   ie.dpp_kde[0], ie.dpp_kde[1]);
+ 		if (sm->key_mgmt == WPA_KEY_MGMT_DPP && sm->dpp_pfs != 2 &&
++		    !sm->skip_validate_ie &&
+ 		    (ie.dpp_kde[1] & DPP_KDE_PFS_ALLOWED) && !sm->dpp_z) {
+ 			wpa_printf(MSG_INFO,
+ 				   "DPP: Peer indicated it supports PFS and local configuration allows this, but PFS was not negotiated for the association");
+diff --git a/wpa_supplicant/dpp_supplicant.c b/wpa_supplicant/dpp_supplicant.c
+index a05c67c..91bf0a8 100644
+--- a/wpa_supplicant/dpp_supplicant.c
++++ b/wpa_supplicant/dpp_supplicant.c
+@@ -606,8 +606,9 @@ static void wpas_dpp_set_testing_options(struct wpa_supplicant *wpa_s,
+ 	if (wpa_s->dpp_groups_override)
+ 		auth->groups_override =
+ 			os_strdup(wpa_s->dpp_groups_override);
+-	auth->ignore_netaccesskey_mismatch =
+-		wpa_s->dpp_ignore_netaccesskey_mismatch;
++	if (wpa_s->dpp_ignore_netaccesskey_mismatch)
++		auth->ignore_netaccesskey_mismatch =
++			wpa_s->dpp_ignore_netaccesskey_mismatch;
+ #endif /* CONFIG_TESTING_OPTIONS */
+ }
+ 
+@@ -1461,7 +1462,8 @@ static int wpas_dpp_handle_config_obj(struct wpa_supplicant *wpa_s,
+ 		 * message. */
+ 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONNECTOR "%s",
+ 			conf->connector);
+-	} else if (conf->passphrase[0]) {
++	}
++	if (conf->passphrase[0]) {
+ 		char hex[64 * 2 + 1];
+ 
+ 		wpa_snprintf_hex(hex, sizeof(hex),
+@@ -1469,7 +1471,8 @@ static int wpas_dpp_handle_config_obj(struct wpa_supplicant *wpa_s,
+ 				 os_strlen(conf->passphrase));
+ 		wpa_msg(wpa_s, MSG_INFO, DPP_EVENT_CONFOBJ_PASS "%s",
+ 			hex);
+-	} else if (conf->psk_set) {
++	}
++	if (conf->psk_set) {
+ 		char hex[PMK_LEN * 2 + 1];
+ 
+ 		wpa_snprintf_hex(hex, sizeof(hex), conf->psk, PMK_LEN);
+@@ -3059,7 +3062,7 @@ wpas_dpp_gas_status_handler(void *ctx, struct wpabuf *resp, int ok)
+ 		wpabuf_free(resp);
+ 		eloop_cancel_timeout(wpas_dpp_config_result_wait_timeout,
+ 				     wpa_s, NULL);
+-		eloop_register_timeout(2, 0,
++		eloop_register_timeout(4, 0,
+ 				       wpas_dpp_config_result_wait_timeout,
+ 				       wpa_s, NULL);
+ 		return;
+@@ -3511,7 +3511,7 @@ static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
+ 	struct hostapd_hw_modes *mode;
+ 	int c;
+ 	struct wpa_bss *bss;
+-	bool chan6;
++	bool chan6 = false;
+ 
+ 	if (!bi && !wpa_s->dpp_reconfig_ssid)
+ 		return;
+@@ -3531,7 +3531,6 @@ static void wpas_dpp_chirp_scan_res_handler(struct wpa_supplicant *wpa_s,
+ 	/* Preferred chirping channels */
+ 	mode = get_mode(wpa_s->hw.modes, wpa_s->hw.num_modes,
+ 			HOSTAPD_MODE_IEEE80211G, 0);
+-	chan6 = mode == NULL;
+ 	if (mode) {
+ 		for (c = 0; c < mode->num_channels; c++) {
+ 			struct hostapd_channel_data *chan = &mode->channels[c];
+diff --git a/wpa_supplicant/gas_query.c b/wpa_supplicant/gas_query.c
+index 4b3fcfc..b8fa460 100644
+--- a/wpa_supplicant/gas_query.c
++++ b/wpa_supplicant/gas_query.c
+@@ -24,11 +24,11 @@
+ 
+ 
+ /** GAS query timeout in seconds */
+-#define GAS_QUERY_TIMEOUT_PERIOD 2
++#define GAS_QUERY_TIMEOUT_PERIOD 6
+ 
+ /* GAS query wait-time / duration in ms */
+-#define GAS_QUERY_WAIT_TIME_INITIAL 1000
+-#define GAS_QUERY_WAIT_TIME_COMEBACK 150
++#define GAS_QUERY_WAIT_TIME_INITIAL 4000
++#define GAS_QUERY_WAIT_TIME_COMEBACK 1000
+ 
+ /**
+  * struct gas_query_pending - Pending GAS query

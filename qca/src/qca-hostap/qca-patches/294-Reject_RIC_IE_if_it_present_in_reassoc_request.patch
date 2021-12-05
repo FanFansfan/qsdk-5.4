@@ -1,0 +1,139 @@
+diff --git a/src/ap/wpa_auth_ft.c b/src/ap/wpa_auth_ft.c
+index d544ae1..3b101b6 100644
+--- a/src/ap/wpa_auth_ft.c
++++ b/src/ap/wpa_auth_ft.c
+@@ -2392,79 +2392,80 @@ static u8 * wpa_ft_process_rdie(struct wpa_state_machine *sm,
+ 	rdie = (struct rsn_rdie *) pos;
+ 	rdie->id = id;
+ 	rdie->descr_count = 0;
+-	rdie->status_code = host_to_le16(WLAN_STATUS_SUCCESS);
++	rdie->status_code = host_to_le16(WLAN_STATUS_REQUEST_DECLINED);
+ 	pos += sizeof(*rdie);
+ 
+-	if (ieee802_11_parse_elems((u8 *) ies, ies_len, &parse, 1) ==
+-	    ParseFailed) {
+-		wpa_printf(MSG_DEBUG, "FT: Failed to parse request IEs");
+-		rdie->status_code =
+-			host_to_le16(WLAN_STATUS_UNSPECIFIED_FAILURE);
+-		return pos;
+-	}
+-
+-	if (parse.wmm_tspec) {
+-		struct wmm_tspec_element *tspec;
+-
+-		if (parse.wmm_tspec_len + 2 < (int) sizeof(*tspec)) {
+-			wpa_printf(MSG_DEBUG, "FT: Too short WMM TSPEC IE "
+-				   "(%d)", (int) parse.wmm_tspec_len);
+-			rdie->status_code =
+-				host_to_le16(WLAN_STATUS_UNSPECIFIED_FAILURE);
+-			return pos;
+-		}
+-		if (end - pos < (int) sizeof(*tspec)) {
+-			wpa_printf(MSG_ERROR, "FT: Not enough room for "
+-				   "response TSPEC");
++	if(rdie->status_code != host_to_le16(WLAN_STATUS_REQUEST_DECLINED)) {
++		if (ieee802_11_parse_elems((u8 *) ies, ies_len, &parse, 1) ==
++		    ParseFailed) {
++			wpa_printf(MSG_DEBUG, "FT: Failed to parse request IEs");
+ 			rdie->status_code =
+ 				host_to_le16(WLAN_STATUS_UNSPECIFIED_FAILURE);
+ 			return pos;
+ 		}
+-		tspec = (struct wmm_tspec_element *) pos;
+-		os_memcpy(tspec, parse.wmm_tspec - 2, sizeof(*tspec));
+-	}
+ 
+-#ifdef NEED_AP_MLME
+-	if (parse.wmm_tspec && sm->wpa_auth->conf.ap_mlme) {
+-		int res;
++		if (parse.wmm_tspec) {
++			struct wmm_tspec_element *tspec;
+ 
+-		res = wmm_process_tspec((struct wmm_tspec_element *) pos);
+-		wpa_printf(MSG_DEBUG, "FT: ADDTS processing result: %d", res);
+-		if (res == WMM_ADDTS_STATUS_INVALID_PARAMETERS)
+-			rdie->status_code =
+-				host_to_le16(WLAN_STATUS_INVALID_PARAMETERS);
+-		else if (res == WMM_ADDTS_STATUS_REFUSED)
+-			rdie->status_code =
+-				host_to_le16(WLAN_STATUS_REQUEST_DECLINED);
+-		else {
+-			/* TSPEC accepted; include updated TSPEC in response */
+-			rdie->descr_count = 1;
+-			pos += sizeof(struct wmm_tspec_element);
++			if (parse.wmm_tspec_len + 2 < (int) sizeof(*tspec)) {
++				wpa_printf(MSG_DEBUG, "FT: Too short WMM TSPEC IE "
++					   "(%d)", (int) parse.wmm_tspec_len);
++				rdie->status_code =
++					host_to_le16(WLAN_STATUS_UNSPECIFIED_FAILURE);
++				return pos;
++			}
++			if (end - pos < (int) sizeof(*tspec)) {
++				wpa_printf(MSG_ERROR, "FT: Not enough room for "
++					   "response TSPEC");
++				rdie->status_code =
++					host_to_le16(WLAN_STATUS_UNSPECIFIED_FAILURE);
++				return pos;
++			}
++			tspec = (struct wmm_tspec_element *) pos;
++			os_memcpy(tspec, parse.wmm_tspec - 2, sizeof(*tspec));
+ 		}
+-		return pos;
+-	}
+-#endif /* NEED_AP_MLME */
+-
+-	if (parse.wmm_tspec && !sm->wpa_auth->conf.ap_mlme) {
+-		int res;
+ 
+-		res = wpa_ft_add_tspec(sm->wpa_auth, sm->addr, pos,
+-				       sizeof(struct wmm_tspec_element));
+-		if (res >= 0) {
+-			if (res)
+-				rdie->status_code = host_to_le16(res);
++#ifdef NEED_AP_MLME
++		if (parse.wmm_tspec && sm->wpa_auth->conf.ap_mlme) {
++			int res;
++
++			res = wmm_process_tspec((struct wmm_tspec_element *) pos);
++			wpa_printf(MSG_DEBUG, "FT: ADDTS processing result: %d", res);
++			if (res == WMM_ADDTS_STATUS_INVALID_PARAMETERS)
++				rdie->status_code =
++					host_to_le16(WLAN_STATUS_INVALID_PARAMETERS);
++			else if (res == WMM_ADDTS_STATUS_REFUSED)
++				rdie->status_code =
++					host_to_le16(WLAN_STATUS_REQUEST_DECLINED);
+ 			else {
+-				/* TSPEC accepted; include updated TSPEC in
+-				 * response */
++				/* TSPEC accepted; include updated TSPEC in response */
+ 				rdie->descr_count = 1;
+ 				pos += sizeof(struct wmm_tspec_element);
+ 			}
+ 			return pos;
+ 		}
++#endif /* NEED_AP_MLME */
++
++		if (parse.wmm_tspec && !sm->wpa_auth->conf.ap_mlme) {
++			int res;
++
++			res = wpa_ft_add_tspec(sm->wpa_auth, sm->addr, pos,
++					       sizeof(struct wmm_tspec_element));
++			if (res >= 0) {
++				if (res)
++					rdie->status_code = host_to_le16(res);
++				else {
++					/* TSPEC accepted; include updated TSPEC in
++					 * response */
++					rdie->descr_count = 1;
++					pos += sizeof(struct wmm_tspec_element);
++				}
++				return pos;
++			}
++		}
+ 	}
+ 
+ 	wpa_printf(MSG_DEBUG, "FT: No supported resource requested");
+-	rdie->status_code = host_to_le16(WLAN_STATUS_UNSPECIFIED_FAILURE);
+ 	return pos;
+ }
+ 

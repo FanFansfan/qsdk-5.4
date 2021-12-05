@@ -1,0 +1,85 @@
+diff --git a/src/eap_peer/eap_wsc.c b/src/eap_peer/eap_wsc.c
+index 92d5a02..b3512bc 100644
+--- a/src/eap_peer/eap_wsc.c
++++ b/src/eap_peer/eap_wsc.c
+@@ -255,8 +255,16 @@ static void * eap_wsc_init(struct eap_sm *sm)
+ 		cfg.new_ap_settings = &new_ap_settings;
+ 	}
+ 
+-	if (os_strstr(phase1, "multi_ap=1"))
+-		cfg.multi_ap_backhaul_sta = 1;
++	pos = os_strstr(phase1, "multi_ap=");
++	if (pos) {
++		u16 id = atoi(pos + 9);
++		if (id != 0) {
++			cfg.multi_ap_backhaul_sta = 1;
++			cfg.multi_ap_profile = id;
++		} else {
++			wpa_printf(MSG_DEBUG, "EAP-WSC: invalid multi ap setting");
++		}
++	}
+ 
+ 	data->wps = wps_init(&cfg);
+ 	if (data->wps == NULL) {
+diff --git a/src/wps/wps.c b/src/wps/wps.c
+index 484df26..19c6fb7 100644
+--- a/src/wps/wps.c
++++ b/src/wps/wps.c
+@@ -146,6 +146,7 @@ struct wps_data * wps_init(const struct wps_config *cfg)
+ 	}
+ 
+ 	data->multi_ap_backhaul_sta = cfg->multi_ap_backhaul_sta;
++	data->multi_ap_profile = cfg->multi_ap_profile;
+ 
+ 	return data;
+ }
+diff --git a/src/wps/wps.h b/src/wps/wps.h
+index 9963c46..933ad30 100644
+--- a/src/wps/wps.h
++++ b/src/wps/wps.h
+@@ -194,6 +194,7 @@ struct wps_config {
+ 	 * enrollee
+ 	 */
+ 	int multi_ap_backhaul_sta;
++	int multi_ap_profile;
+ };
+ 
+ struct wps_data * wps_init(const struct wps_config *cfg);
+diff --git a/src/wps/wps_i.h b/src/wps/wps_i.h
+index 2cf22d4..5486e2a 100644
+--- a/src/wps/wps_i.h
++++ b/src/wps/wps_i.h
+@@ -127,6 +127,7 @@ struct wps_data {
+ 	struct wps_nfc_pw_token *nfc_pw_token;
+ 
+ 	int multi_ap_backhaul_sta;
++	int multi_ap_profile;
+ };
+ 
+ 
+diff --git a/wpa_supplicant/wps_supplicant.c b/wpa_supplicant/wps_supplicant.c
+index 6b03634..3c4fbd5 100644
+--- a/wpa_supplicant/wps_supplicant.c
++++ b/wpa_supplicant/wps_supplicant.c
+@@ -1183,14 +1183,18 @@ int wpas_wps_start_pbc(struct wpa_supplicant *wpa_s, const u8 *bssid,
+ 		}
+ 	}
+ #endif /* CONFIG_P2P */
+-	os_snprintf(phase1, sizeof(phase1), "pbc=1%s",
+-		    multi_ap_backhaul_sta ? " multi_ap=1" : "");
++	os_snprintf(phase1, sizeof(phase1), "pbc=1");
++	if (multi_ap_backhaul_sta)
++		os_snprintf(phase1+5, sizeof(phase1)-5, " multi_ap=%d",multi_ap_backhaul_sta);
++
+ 	if (wpa_config_set_quoted(ssid, "phase1", phase1) < 0)
+ 		return -1;
+ 	if (wpa_s->wps_fragment_size)
+ 		ssid->eap.fragment_size = wpa_s->wps_fragment_size;
+-	if (multi_ap_backhaul_sta)
++	if (multi_ap_backhaul_sta) {
+ 		ssid->multi_ap_backhaul_sta = 1;
++		ssid->multi_ap_profile = multi_ap_backhaul_sta;
++	}
+ 	wpa_supplicant_wps_event(wpa_s, WPS_EV_PBC_ACTIVE, NULL);
+ 	eloop_register_timeout(WPS_PBC_WALK_TIME, 0, wpas_wps_timeout,
+ 			       wpa_s, NULL);

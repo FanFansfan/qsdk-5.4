@@ -1,0 +1,353 @@
+diff --git a/src/ap/ap_drv_ops.h b/src/ap/ap_drv_ops.h
+index 3e4b2d6..93f28bb 100644
+--- a/src/ap/ap_drv_ops.h
++++ b/src/ap/ap_drv_ops.h
+@@ -392,4 +392,20 @@ hostapd_drv_set_band(struct hostapd_data *hapd, enum set_band band)
+ 	return hapd->driver->set_band(hapd->drv_priv, band);
+ }
+ 
++static inline int hostapd_drv_fils_crypto_capable(struct hostapd_data *hapd)
++{
++	if (!hapd->driver ||
++	    !hapd->driver->is_drv_fils_crypto_capable || !hapd->drv_priv)
++		return 0;
++	return hapd->driver->is_drv_fils_crypto_capable(hapd->drv_priv);
++}
++
++static inline int hostapd_set_fils_aad(struct hostapd_data *hapd,
++				       struct wpa_driver_sta_auth_params *param)
++{
++	if (!hapd->driver ||
++	    !hapd->driver->set_fils_aad || !hapd->drv_priv)
++		return -1;
++	return hapd->driver->set_fils_aad(hapd->drv_priv, param);
++}
+ #endif /* AP_DRV_OPS */
+diff --git a/src/ap/ieee802_11.c b/src/ap/ieee802_11.c
+index 0821f54..863894e 100644
+--- a/src/ap/ieee802_11.c
++++ b/src/ap/ieee802_11.c
+@@ -2156,7 +2156,17 @@ static void handle_auth_fils_finish(struct hostapd_data *hapd,
+ 				    struct wpabuf *data, int pub)
+ {
+ 	u16 auth_alg;
++	struct wpa_driver_sta_auth_params params;
+ 
++	if (hostapd_drv_fils_crypto_capable(hapd)) {
++		wpa_auth_get_fils_aead_params(sta->wpa_sm,
++					      params.fils_anonce,
++					      params.fils_snonce,
++					      params.fils_kek,
++					      &params.fils_kek_len);
++		params.addr = sta->addr;
++		hostapd_set_fils_aad(hapd, &params);
++	}
+ 	auth_alg = (pub ||
+ 		    resp == WLAN_STATUS_FINITE_CYCLIC_GROUP_NOT_SUPPORTED) ?
+ 		WLAN_AUTH_FILS_SK_PFS : WLAN_AUTH_FILS_SK;
+@@ -4008,15 +4018,26 @@ rsnxe_done:
+ 			goto done;
+ 		}
+ 
+-		/* FILS Session */
+-		*p++ = WLAN_EID_EXTENSION; /* Element ID */
+-		*p++ = 1 + FILS_SESSION_LEN; /* Length */
+-		*p++ = WLAN_EID_EXT_FILS_SESSION; /* Element ID Extension */
+-		os_memcpy(p, elems.fils_session, FILS_SESSION_LEN);
+-		send_len += 2 + 1 + FILS_SESSION_LEN;
++		if (hostapd_drv_fils_crypto_capable(hapd)) {
++			u8 *buff = p;
+ 
+-		send_len = fils_encrypt_assoc(sta->wpa_sm, buf, send_len,
+-					      buflen, sta->fils_hlp_resp);
++			p = hostapd_eid_assoc_fils_session(sta->wpa_sm, p,
++							   elems.fils_session,
++							   sta->fils_hlp_resp);
++			wpa_hexdump(MSG_DEBUG, "FILS Assoc Resp BUF (IEs)",
++				    buff, p - buff);
++			send_len += p - buff;
++		} else {
++			/* FILS Session */
++			*p++ = WLAN_EID_EXTENSION; /* Element ID */
++			*p++ = 1 + FILS_SESSION_LEN; /* Length */
++			*p++ = WLAN_EID_EXT_FILS_SESSION; /* Element ID Extension */
++			os_memcpy(p, elems.fils_session, FILS_SESSION_LEN);
++			send_len += 2 + 1 + FILS_SESSION_LEN;
++			send_len = fils_encrypt_assoc(sta->wpa_sm, buf,
++						      send_len, buflen,
++						      sta->fils_hlp_resp);
++		}
+ 		if (send_len < 0) {
+ 			res = WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 			goto done;
+@@ -4348,23 +4369,49 @@ static void handle_assoc(struct hostapd_data *hapd,
+ 	    sta->auth_alg == WLAN_AUTH_FILS_PK) {
+ 		int res;
+ 
+-		/* The end of the payload is encrypted. Need to decrypt it
+-		 * before parsing. */
+-
+ 		tmp = os_memdup(pos, left);
+ 		if (!tmp) {
+ 			resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
+ 			goto fail;
+ 		}
+ 
+-		res = fils_decrypt_assoc(sta->wpa_sm, sta->fils_session, mgmt,
+-					 len, tmp, left);
+-		if (res < 0) {
+-			resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
+-			goto fail;
++		if (hostapd_drv_fils_crypto_capable(hapd)) {
++			const u8* ses;
++
++			ses = wpa_fils_validate_fils_session(sta->wpa_sm, pos,
++							     left,
++							     sta->fils_session);
++			if (!ses) {
++				wpa_printf(MSG_DEBUG,
++					   "FILS: Session validation failed");
++				resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
++				goto fail;
++			}
++
++			res = wpa_fils_validate_key_confirm(sta->wpa_sm, pos,
++							    left);
++			if (res < 0) {
++				wpa_printf(MSG_DEBUG,
++					   "FILS: Key validation failed");
++				resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
++				goto fail;
++			}
++
++			pos = tmp;
++		} else {
++			/* The end of the payload is encrypted. Need to decrypt
++			 * it before parsing. */
++
++			res = fils_decrypt_assoc(sta->wpa_sm, sta->fils_session, mgmt,
++						 len, tmp, left);
++			if (res < 0) {
++				resp = WLAN_STATUS_UNSPECIFIED_FAILURE;
++				goto fail;
++			}
++
++			pos = tmp;
++			left = res;
+ 		}
+-		pos = tmp;
+-		left = res;
+ 	}
+ #endif /* CONFIG_FILS */
+ 
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 91b11ab..a37352a 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -1919,6 +1919,14 @@ struct wpa_driver_capa {
+ #define WPA_DRIVER_FLAGS_4WAY_HANDSHAKE_PSK	0x0200000000000000ULL
+ /** Driver supports a separate control port TX for EAPOL frames */
+ #define WPA_DRIVER_FLAGS_CONTROL_PORT		0x0400000000000000ULL
++/**
++ * Driver support FILS Encryption/Decryption of (Re)Association frames.
++ * This flag is to indicate hostapd to share the FILS AAD details with
++ * the Driver just before sending Auth response so that driver
++ * can perform encryption/decryption of (Re)Association frames.
++ * And hostapd has to skip this encap/decap if this bit is set.
++ */
++#define WPA_DRIVER_FLAGS_FILS_CRYPTO_OFFLOAD   0x0400000000000000ULL
+ /** Driver supports VLAN offload */
+ #define WPA_DRIVER_FLAGS_VLAN_OFFLOAD		0x0800000000000000ULL
+ /** Driver supports UPDATE_FT_IES command */
+@@ -4455,6 +4463,29 @@ struct wpa_driver_ops {
+ 	int (*set_4addr_mode)(void *priv, const char *bridge_ifname, int val);
+ 
+ 	/**
++	 * is_drv_fils_crypto_capable - Check driver is fils crypto capable
++	 * @priv: Private driver interface data
++	 * Returns: 1 if capable, 0 if not capable
++	 *
++	 * Check the underlying driver is capable to perform (Re-)Association
++	 * Encrypt/Decrypt operation for FILS connection.
++	 */
++	int (*is_drv_fils_crypto_capable)(void *priv);
++
++	/**
++	 * set_fils_aad - Set FILS AAD data to driver
++	 * @priv: Private driver interface data
++	 * @param: Auth params
++	 * Return: 0 on success, -1 on failure
++	 *
++	 * Set FILS AAD (FILS KEK, KEK length, SNonce and ANonce) and STA MAC to
++	 * driver just before sending FILS SK AUTH response.
++	 */
++	int (*set_fils_aad)(void *priv,
++			struct wpa_driver_sta_auth_params *param);
++
++
++	/**
+ 	 * update_dh_ie - Update DH IE
+ 	 * @priv: Private driver interface data
+ 	 * @peer_mac: Peer MAC address
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index ea16d8d..57461a9 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -11595,6 +11595,55 @@ fail:
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_FILS
++static int nl80211_set_fils_aad(void *priv,
++				struct wpa_driver_sta_auth_params *param)
++{
++	struct i802_bss *bss = priv;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++	struct nl_msg *msg;
++	int ret = -1;
++	char fils_nonces[2 * FILS_NONCE_LEN] = {};
++
++	msg = nl80211_drv_msg(drv, 0, NL80211_CMD_SET_FILS_AAD);
++	if (!msg)
++		goto fail;
++
++	wpa_printf(MSG_DEBUG, "nl80211: Set FILS AAD (ifindex=%d)",
++		   drv->ifindex);
++	if (nla_put(msg, NL80211_ATTR_MAC, ETH_ALEN, param->addr))
++		goto fail;
++	if (nla_put(msg, NL80211_ATTR_FILS_KEK, param->fils_kek_len,
++		    param->fils_kek))
++		goto fail;
++	memcpy(&fils_nonces[0], param->fils_snonce, FILS_NONCE_LEN);
++	memcpy(&fils_nonces[FILS_NONCE_LEN], param->fils_anonce, FILS_NONCE_LEN);
++	if (nla_put(msg, NL80211_ATTR_FILS_NONCES, (2 * FILS_NONCE_LEN),
++		    fils_nonces))
++		goto fail;
++
++	ret = send_and_recv_msgs(drv, msg, NULL, NULL, NULL, NULL);
++	msg = NULL;
++	if (ret)
++		wpa_dbg(drv->ctx, MSG_DEBUG,
++			"nl80211: Set FILS AAD command failed: ret=%d (%s)",
++			ret, strerror(-ret));
++
++	return ret;
++
++fail:
++	nlmsg_free(msg);
++	return ret;
++}
++
++static int nl80211_is_drv_fils_crypto_capable(void *priv)
++{
++	struct i802_bss *bss = priv;
++	struct wpa_driver_nl80211_data *drv = bss->drv;
++
++	return (drv->capa.flags & WPA_DRIVER_FLAGS_FILS_CRYPTO_OFFLOAD) ? 1 : 0;
++}
++#endif /* CONFIG_FILS */
+ 
+ #ifdef CONFIG_DPP
+ static int nl80211_dpp_listen(void *priv, bool enable)
+@@ -11753,6 +11802,10 @@ const struct wpa_driver_ops wpa_driver_nl80211_ops = {
+ 	.update_connect_params = nl80211_update_connection_params,
+ 	.send_external_auth_status = nl80211_send_external_auth_status,
+ 	.set_4addr_mode = nl80211_set_4addr_mode,
++#ifdef CONFIG_FILS
++        .is_drv_fils_crypto_capable = nl80211_is_drv_fils_crypto_capable,
++        .set_fils_aad = nl80211_set_fils_aad,
++#endif /* CONFIG_FILS */
+ #ifdef CONFIG_DPP
+ 	.dpp_listen = nl80211_dpp_listen,
+ #endif /* CONFIG_DPP */
+diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
+index e4b1f45..1f9dd86 100644
+--- a/src/drivers/driver_nl80211_capa.c
++++ b/src/drivers/driver_nl80211_capa.c
+@@ -635,6 +635,10 @@ static void wiphy_info_ext_feature_flags(struct wiphy_info_data *info,
+ 		capa->flags |= WPA_DRIVER_FLAGS_SAFE_PTK0_REKEYS;
+ 
+ 	if (ext_feature_isset(ext_features, len,
++			      NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD))
++		capa->flags |= WPA_DRIVER_FLAGS_FILS_CRYPTO_OFFLOAD;
++
++	if (ext_feature_isset(ext_features, len,
+ 			      NL80211_EXT_FEATURE_BEACON_PROTECTION))
+ 		capa->flags |= WPA_DRIVER_FLAGS_BEACON_PROTECTION;
+ 
+diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
+index 967e34f..d6d6fa8 100644
+--- a/src/drivers/nl80211_copy.h
++++ b/src/drivers/nl80211_copy.h
+@@ -288,6 +288,29 @@
+  */
+ 
+ /**
++ * DOC: FILS shared key crypto offload
++ *
++ * This feature is applicable to Drivers running in AP mode.
++ *
++ * FILS shared key crypto offload can be advertized by drivers by setting
++ * @NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD flag. The drivers that support
++ * FILS shared key crypto offload should be able to encrypt or decrypt
++ * association frames for FILS shared key authentication as per IEEE 802.11ai.
++ * With this capability, for FILS key derivation, drivers depend on userspace.
++ *
++ * After FILS key derivation, userspace shares the FILS AAD details with driver
++ * and driver stores the same to use in decryption of association request and
++ * in encryption of association response. The below parameters should be given
++ * to driver in %NL80211_CMD_SET_FILS_AAD.
++ *	%NL80211_ATTR_MAC - STA MAC address, used for storing FILS AAD per STA
++ *	%NL80211_ATTR_FILS_KEK - Used for encryption or decryption
++ *	%NL80211_ATTR_FILS_NONCES - Used for encryption or decryption
++ *			(STA Nonce 16 bytes followed by AP Nonce 16 bytes)
++ *
++ * Once the association is done, the driver cleans the FILS AAD data.
++ */
++
++/**
+  * enum nl80211_commands - supported nl80211 commands
+  *
+  * @NL80211_CMD_UNSPEC: unspecified command to catch errors
+@@ -1156,6 +1179,12 @@
+  *	peer MAC address and %NL80211_ATTR_FRAME is used to specify the frame
+  *	content. The frame is ethernet data.
+  *
++ * @NL80211_CMD_SET_FILS_AAD: Set FILS AAD data to the driver using -
++ *	&NL80211_ATTR_MAC - for STA MAC address
++ *	&NL80211_ATTR_FILS_KEK - for KEK
++ *	&NL80211_ATTR_FILS_NONCES - for FILS Nonces
++ *		(STA Nonce 16 bytes followed by AP Nonce 16 bytes)
++ *
+  * @NL80211_CMD_SET_TID_CONFIG: Data frame TID specific configuration
+  *	is passed using %NL80211_ATTR_TID_CONFIG attribute.
+  *
+@@ -1394,6 +1423,8 @@ enum nl80211_commands {
+ 
+ 	NL80211_CMD_PROBE_MESH_LINK,
+ 
++	NL80211_CMD_SET_FILS_AAD,
++
+ 	NL80211_CMD_SET_TID_CONFIG,
+ 
+ 	NL80211_CMD_UNPROT_BEACON,
+@@ -5774,6 +5805,11 @@ enum nl80211_feature_flags {
+  * @NL80211_EXT_FEATURE_CONTROL_PORT_OVER_NL80211_TX_STATUS: The driver
+  *	can report tx status for control port over nl80211 tx operations.
+  *
++ * @NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD: Driver running in AP mode supports
++ *	FILS encryption/decryption for (Re)Association Request/Response frames.
++ *	Userspace has to share FILS AAD details to the driver by using
++ *	@NL80211_CMD_SET_FILS_AAD.
++ *
+  * @NUM_NL80211_EXT_FEATURES: number of extended features.
+  * @MAX_NL80211_EXT_FEATURES: highest extended feature index.
+  */
+@@ -5820,6 +5856,7 @@ enum nl80211_ext_feature_index {
+ 	NL80211_EXT_FEATURE_STA_TX_PWR,
+ 	NL80211_EXT_FEATURE_SAE_OFFLOAD,
+ 	NL80211_EXT_FEATURE_VLAN_OFFLOAD,
++	NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD,
+ 	NL80211_EXT_FEATURE_AQL,
+ 	NL80211_EXT_FEATURE_BEACON_PROTECTION,
+ 	NL80211_EXT_FEATURE_CONTROL_PORT_NO_PREAUTH,

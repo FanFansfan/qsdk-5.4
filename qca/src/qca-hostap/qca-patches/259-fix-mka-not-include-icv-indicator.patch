@@ -1,0 +1,116 @@
+diff --git a/src/ap/wpa_auth_kay.c b/src/ap/wpa_auth_kay.c
+index d5341e2..7caee5d 100644
+--- a/src/ap/wpa_auth_kay.c
++++ b/src/ap/wpa_auth_kay.c
+@@ -325,7 +325,7 @@ int ieee802_1x_alloc_kay_sm_hapd(struct hostapd_data *hapd,
+ 	kay_ctx->enable_transmit_sa = hapd_enable_transmit_sa;
+ 	kay_ctx->disable_transmit_sa = hapd_disable_transmit_sa;
+ 
+-	res = ieee802_1x_kay_init(kay_ctx, policy,
++	res = ieee802_1x_kay_init(kay_ctx, policy, false,
+ 				  hapd->conf->macsec_replay_protect,
+ 				  hapd->conf->macsec_replay_window,
+ 				  hapd->conf->macsec_port,
+diff --git a/src/pae/ieee802_1x_kay.c b/src/pae/ieee802_1x_kay.c
+index 685b005..5edc157 100644
+--- a/src/pae/ieee802_1x_kay.c
++++ b/src/pae/ieee802_1x_kay.c
+@@ -1858,7 +1858,7 @@ ieee802_1x_mka_get_icv_length(struct ieee802_1x_mka_participant *participant)
+ 
+ 	/* Determine if we need space for the ICV Indicator */
+ 	if (mka_alg_tbl[participant->kay->mka_algindex].icv_len !=
+-	    DEFAULT_ICV_LEN)
++	    DEFAULT_ICV_LEN || participant->kay->mka_icv_indicator)
+ 		length = sizeof(struct ieee802_1x_mka_icv_body);
+ 	else
+ 		length = 0;
+@@ -1881,7 +1881,7 @@ ieee802_1x_mka_encode_icv_body(struct ieee802_1x_mka_participant *participant,
+ 
+ 	length = ieee802_1x_mka_get_icv_length(participant);
+ 	if (mka_alg_tbl[participant->kay->mka_algindex].icv_len !=
+-	    DEFAULT_ICV_LEN)  {
++	    DEFAULT_ICV_LEN || participant->kay->mka_icv_indicator)  {
+ 		wpa_printf(MSG_DEBUG, "KaY: ICV Indicator");
+ 		body = wpabuf_put(buf, MKA_HDR_LEN);
+ 		body->type = MKA_ICV_INDICATOR;
+@@ -3462,7 +3462,7 @@ static void kay_l2_receive(void *ctx, const u8 *src_addr, const u8 *buf,
+  */
+ struct ieee802_1x_kay *
+ ieee802_1x_kay_init(struct ieee802_1x_kay_ctx *ctx, enum macsec_policy policy,
+-		    bool macsec_replay_protect, u32 macsec_replay_window,
++		    bool icv_indicator, bool macsec_replay_protect, u32 macsec_replay_window,
+ 		    u16 port, u8 priority, u32 macsec_csindex, const char *ifname, const u8 *addr)
+ {
+ 	struct ieee802_1x_kay *kay;
+@@ -3503,6 +3503,7 @@ ieee802_1x_kay_init(struct ieee802_1x_kay_ctx *ctx, enum macsec_policy policy,
+ 	kay->macsec_csindex = macsec_csindex;
+ 	kay->mka_algindex = DEFAULT_MKA_ALG_INDEX;
+ 	kay->mka_version = MKA_VERSION_ID;
++	kay->mka_icv_indicator = icv_indicator;
+ 
+ 	os_memcpy(kay->algo_agility, mka_algo_agility,
+ 		  sizeof(kay->algo_agility));
+diff --git a/src/pae/ieee802_1x_kay.h b/src/pae/ieee802_1x_kay.h
+index a3cf964..dc5ff5f 100644
+--- a/src/pae/ieee802_1x_kay.h
++++ b/src/pae/ieee802_1x_kay.h
+@@ -190,6 +190,7 @@ struct ieee802_1x_kay {
+ 	enum validate_frames macsec_validate;
+ 	enum confidentiality_offset macsec_confidentiality;
+ 	u32 mka_hello_time;
++	bool mka_icv_indicator;
+ 
+ 	u32 ltx_kn;
+ 	u8 ltx_an;
+@@ -239,7 +240,7 @@ u64 mka_sci_u64(struct ieee802_1x_mka_sci *sci);
+ 
+ struct ieee802_1x_kay *
+ ieee802_1x_kay_init(struct ieee802_1x_kay_ctx *ctx, enum macsec_policy policy,
+-		    bool macsec_replay_protect, u32 macsec_replay_window,
++		    bool icv_indicator, bool macsec_replay_protect, u32 macsec_replay_window,
+ 		    u16 port, u8 priority, u32 macsec_csindex, const char *ifname, const u8 *addr);
+ void ieee802_1x_kay_deinit(struct ieee802_1x_kay *kay);
+ 
+diff --git a/wpa_supplicant/config.c b/wpa_supplicant/config.c
+index b56b973..2bde113 100644
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
+@@ -2560,6 +2560,7 @@ static const struct parse_data ssid_fields[] = {
+ 	{ INT_RANGE(macsec_csindex, 0, 1) },
+ 	{ FUNC_KEY(mka_cak) },
+ 	{ FUNC_KEY(mka_ckn) },
++	{ INT_RANGE(mka_icv_indicator, 0, 1) },
+ #endif /* CONFIG_MACSEC */
+ #ifdef CONFIG_HS20
+ 	{ INT(update_identifier) },
+diff --git a/wpa_supplicant/config_ssid.h b/wpa_supplicant/config_ssid.h
+index 057a85b..62c171e 100644
+--- a/wpa_supplicant/config_ssid.h
++++ b/wpa_supplicant/config_ssid.h
+@@ -935,6 +935,12 @@ struct wpa_ssid {
+ 	 * mka_psk_set - Whether mka_ckn and mka_cak are set
+ 	 */
+ 	u8 mka_psk_set;
++	/**
++	 * mka_icv_indicator - Include or not include icv indicatoer in MKPDU
++	 * false: Not include
++	 * true: Include
++	 */
++	bool mka_icv_indicator;
+ #endif /* CONFIG_MACSEC */
+ 
+ #ifdef CONFIG_HS20
+diff --git a/wpa_supplicant/wpas_kay.c b/wpa_supplicant/wpas_kay.c
+index 4d1ce02..4fcd445 100644
+--- a/wpa_supplicant/wpas_kay.c
++++ b/wpa_supplicant/wpas_kay.c
+@@ -239,7 +239,8 @@ int ieee802_1x_alloc_kay_sm(struct wpa_supplicant *wpa_s, struct wpa_ssid *ssid)
+ 	kay_ctx->enable_transmit_sa = wpas_enable_transmit_sa;
+ 	kay_ctx->disable_transmit_sa = wpas_disable_transmit_sa;
+ 
+-	res = ieee802_1x_kay_init(kay_ctx, policy, ssid->macsec_replay_protect,
++	res = ieee802_1x_kay_init(kay_ctx, policy, ssid->mka_icv_indicator,
++				  ssid->macsec_replay_protect,
+ 				  ssid->macsec_replay_window, ssid->macsec_port,
+ 				  ssid->mka_priority, ssid->macsec_csindex,
+ 				  wpa_s->ifname, wpa_s->own_addr);

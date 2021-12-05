@@ -1,0 +1,13 @@
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index ea16d8d..f4e5a13 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -7214,7 +7214,7 @@ static int i802_set_wds_sta(void *priv, const u8 *addr, int aid, int val,
+ 		if (!if_nametoindex(name)) {
+ 			if (nl80211_create_iface(drv, name,
+ 						 NL80211_IFTYPE_AP_VLAN,
+-						 bss->addr, 1, NULL, NULL, 0) <
++						 addr, 1, NULL, NULL, 0) <
+ 			    0)
+ 				return -1;
+ 			if (bridge_ifname &&

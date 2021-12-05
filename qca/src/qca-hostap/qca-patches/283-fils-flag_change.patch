@@ -1,0 +1,53 @@
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index 0430c83..d97c3fa 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -1920,14 +1920,6 @@ struct wpa_driver_capa {
+ #define WPA_DRIVER_FLAGS_4WAY_HANDSHAKE_PSK	0x0200000000000000ULL
+ /** Driver supports a separate control port TX for EAPOL frames */
+ #define WPA_DRIVER_FLAGS_CONTROL_PORT		0x0400000000000000ULL
+-/**
+- * Driver support FILS Encryption/Decryption of (Re)Association frames.
+- * This flag is to indicate hostapd to share the FILS AAD details with
+- * the Driver just before sending Auth response so that driver
+- * can perform encryption/decryption of (Re)Association frames.
+- * And hostapd has to skip this encap/decap if this bit is set.
+- */
+-#define WPA_DRIVER_FLAGS_FILS_CRYPTO_OFFLOAD   0x0400000000000000ULL
+ /** Driver supports VLAN offload */
+ #define WPA_DRIVER_FLAGS_VLAN_OFFLOAD		0x0800000000000000ULL
+ /** Driver supports UPDATE_FT_IES command */
+@@ -2056,6 +2048,7 @@ struct wpa_driver_capa {
+ 
+ 	/* Maximum number of supported CSA counters */
+ 	u16 max_csa_counters;
++	int drv_fils_crypto_capable;
+ };
+ 
+ 
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index a1bb66c..035e62c 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -11688,7 +11688,7 @@ static int nl80211_is_drv_fils_crypto_capable(void *priv)
+ 	struct i802_bss *bss = priv;
+ 	struct wpa_driver_nl80211_data *drv = bss->drv;
+ 
+-	return (drv->capa.flags & WPA_DRIVER_FLAGS_FILS_CRYPTO_OFFLOAD) ? 1 : 0;
++       return drv->capa.drv_fils_crypto_capable;
+ }
+ #endif /* CONFIG_FILS */
+ 
+diff --git a/src/drivers/driver_nl80211_capa.c b/src/drivers/driver_nl80211_capa.c
+index 73d182f..2215cbf 100644
+--- a/src/drivers/driver_nl80211_capa.c
++++ b/src/drivers/driver_nl80211_capa.c
+@@ -636,7 +636,7 @@ static void wiphy_info_ext_feature_flags(struct wiphy_info_data *info,
+ 
+ 	if (ext_feature_isset(ext_features, len,
+ 			      NL80211_EXT_FEATURE_FILS_CRYPTO_OFFLOAD))
+-		capa->flags |= WPA_DRIVER_FLAGS_FILS_CRYPTO_OFFLOAD;
++               capa->drv_fils_crypto_capable = 1;
+ 
+ 	if (ext_feature_isset(ext_features, len,
+ 			      NL80211_EXT_FEATURE_BEACON_PROTECTION))

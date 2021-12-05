@@ -1,0 +1,613 @@
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+index f5e8a27..34601c0 100644
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -2094,6 +2094,7 @@ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd)
+ 		auth->dpp_map = hapd->conf->dpp_map;
+ 
+ 	curve = get_param(cmd, " curve=");
++
+ 	hostapd_dpp_set_testing_options(hapd, auth);
+ 	if (dpp_set_configurator(auth, cmd) == 0 &&
+ 	    dpp_configurator_own_config(auth, curve, 1) == 0) {
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 36b36dc..071c8e3 100644
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -28,6 +28,7 @@
+ 
+ 
+ static const char * dpp_netrole_str(enum dpp_netrole netrole);
++static enum dpp_akm dpp_akm_from_str(const char *akm);
+ 
+ #ifdef CONFIG_TESTING_OPTIONS
+ #ifdef CONFIG_DPP2
+@@ -908,10 +909,11 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
+ 					  const char *mud_url, int *opclasses)
+ {
+ 	size_t len, name_len;
+-	const char *tech = "infra";
++	const char *tech = auth->dpp_map ? "map" : "infra";
+ 	const char *dpp_name;
+ 	struct wpabuf *buf, *json;
+ 	char *csr = NULL;
++	int dpp_map = auth->dpp_map;
+ 
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	if (dpp_test == DPP_TEST_INVALID_CONFIG_ATTR_OBJ_CONF_REQ) {
+@@ -926,6 +928,8 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
+ 	name_len = os_strlen(dpp_name);
+ 
+ 	len = 100 + name_len * 6 + 1 + int_array_len(opclasses) * 4;
++	if (dpp_map)
++		len += 100;
+ 	if (mud_url && mud_url[0])
+ 		len += 10 + os_strlen(mud_url);
+ #ifdef CONFIG_DPP2
+@@ -951,7 +955,25 @@ struct wpabuf * dpp_build_conf_req_helper(struct dpp_authentication *auth,
+ 	json_value_sep(json);
+ 	json_add_string(json, "wi-fi_tech", tech);
+ 	json_value_sep(json);
+-	json_add_string(json, "netRole", dpp_netrole_str(netrole));
++	if (dpp_map)
++		json_add_string(json, "netRole", dpp_netrole_str(DPP_NETROLE_MAP_AGENT));
++	else
++		json_add_string(json, "netRole", dpp_netrole_str(netrole));
++
++	/* Add bSTA List */
++	if(dpp_map && auth) {
++		json_value_sep(json);
++		json_start_array(json, "bSTAList");
++		wpabuf_put_u8(json, '{');
++		json_add_string(json, "netRole", dpp_netrole_str(DPP_NETROLE_MAP_BACKHAUL_STA));
++		json_value_sep(json);
++		json_add_string(json, "akm", "dpp+psk+sae");
++		json_value_sep(json);
++		json_add_string(json, "channelList", "81/1,115/36");
++		wpabuf_put_u8(json, '}');
++		json_end_array(json);
++	}
++
+ 	if (mud_url && mud_url[0]) {
+ 		json_value_sep(json);
+ 		json_add_string(json, "mudurl", mud_url);
+@@ -1078,7 +1100,8 @@ void dpp_configuration_free(struct dpp_configuration *conf)
+ {
+ 	if (!conf)
+ 		return;
+-	str_clear_free(conf->passphrase);
++	if (conf->passphrase)
++		str_clear_free(conf->passphrase);
+ 	os_free(conf->group_id);
+ 	os_free(conf->csrattrs);
+ 	bin_clear_free(conf, sizeof(*conf));
+@@ -1115,6 +1138,38 @@ static int dpp_configuration_parse_helper(struct dpp_authentication *auth,
+ 	if (pos)
+ 		auth->provision_configurator = 1;
+ 
++	pos = os_strstr(cmd, " netrole=mapController");
++	if (pos) {
++		if (!conf_ap)
++			goto fail;
++		conf_ap->netrole = DPP_NETROLE_MAP_CONTROLLER;
++	}
++
++	pos = os_strstr(cmd, " netrole=mapAgent");
++	if (pos) {
++		if (conf_ap != NULL)
++			conf_ap->netrole = DPP_NETROLE_MAP_AGENT;
++		else if (conf_sta != NULL)
++			conf_sta->netrole = DPP_NETROLE_MAP_AGENT;
++		else {
++			wpa_printf(MSG_INFO, "DPP: invalid conf/conf is NULL\n"); return 0;
++		}
++	}
++
++	pos = os_strstr(cmd, " netrole=mapBackhaulSta");
++	if (pos) {
++		if (!conf_ap)
++			goto fail;
++		conf_ap->netrole = DPP_NETROLE_MAP_BACKHAUL_STA;
++	}
++
++	pos = os_strstr(cmd, " netrole=mapBackhaulBss");
++	if (pos) {
++		if (!conf_ap)
++			goto fail;
++		conf_ap->netrole = DPP_NETROLE_MAP_BACKHAUL_BSS;
++	}
++
+ 	if (!conf)
+ 		return 0;
+ 
+@@ -1246,7 +1301,7 @@ static int dpp_configuration_parse(struct dpp_authentication *auth,
+ 		goto fail;
+ 	os_memcpy(tmp, cmd, len);
+ 	tmp[len] = '\0';
+-	res = dpp_configuration_parse_helper(auth, cmd, 0);
++	res = dpp_configuration_parse_helper(auth, tmp, 0);
+ 	str_clear_free(tmp);
+ 	if (res)
+ 		goto fail;
+@@ -1395,7 +1450,8 @@ void dpp_auth_deinit(struct dpp_authentication *auth)
+ 
+ static struct wpabuf *
+ dpp_build_conf_start(struct dpp_authentication *auth,
+-		     struct dpp_configuration *conf, size_t tailroom)
++		     struct dpp_configuration *conf, size_t tailroom,
++		     enum dpp_netrole netrole)
+ {
+ 	struct wpabuf *buf;
+ 
+@@ -1408,8 +1464,18 @@ dpp_build_conf_start(struct dpp_authentication *auth,
+ 	if (!buf)
+ 		return NULL;
+ 	json_start_object(buf, NULL);
+-	json_add_string(buf, "wi-fi_tech", "infra");
++	if (netrole == DPP_NETROLE_MAP_AGENT ||
++	    netrole == DPP_NETROLE_MAP_BACKHAUL_STA) {
++		json_add_string(buf, "wi-fi_tech", "map");
++	} else {
++		json_add_string(buf, "wi-fi_tech", "infra");
++	}
+ 	json_value_sep(buf);
++	if (netrole == DPP_NETROLE_MAP_AGENT) {
++		json_add_int(buf, "dfCounterThreshold", 255);
++		json_value_sep(buf);
++		return buf;
++	}
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	if (auth->discovery_override) {
+ 		wpa_printf(MSG_DEBUG, "DPP: TESTING - discovery override: '%s'",
+@@ -1502,6 +1568,14 @@ static const char * dpp_netrole_str(enum dpp_netrole netrole)
+ 		return "ap";
+ 	case DPP_NETROLE_CONFIGURATOR:
+ 		return "configurator";
++	case DPP_NETROLE_MAP_AGENT:
++		return "mapAgent";
++	case DPP_NETROLE_MAP_CONTROLLER:
++		return "mapController";
++	case DPP_NETROLE_MAP_BACKHAUL_STA:
++		return "mapBackhaulSta";
++	case DPP_NETROLE_MAP_BACKHAUL_BSS:
++		return "mapBackhaulBss";
+ 	default:
+ 		return "??";
+ 	}
+@@ -1510,7 +1584,8 @@ static const char * dpp_netrole_str(enum dpp_netrole netrole)
+ 
+ static struct wpabuf *
+ dpp_build_conf_obj_dpp(struct dpp_authentication *auth,
+-		       struct dpp_configuration *conf)
++		       struct dpp_configuration *conf,
++		       enum dpp_netrole netrole)
+ {
+ 	struct wpabuf *buf = NULL;
+ 	char *signed_conn = NULL;
+@@ -1568,7 +1643,13 @@ dpp_build_conf_obj_dpp(struct dpp_authentication *auth,
+ 	json_add_string(dppcon, "groupId",
+ 			conf->group_id ? conf->group_id : "*");
+ 	json_value_sep(dppcon);
+-	json_add_string(dppcon, "netRole", dpp_netrole_str(conf->netrole));
++
++	if (auth->dpp_map) {
++		json_add_string(dppcon, "netRole", dpp_netrole_str(netrole));
++	} else {
++		json_add_string(dppcon, "netRole", dpp_netrole_str(conf->netrole));
++	}
++
+ 	json_end_object(dppcon);
+ 	json_end_array(dppcon);
+ 	json_value_sep(dppcon);
+@@ -1620,7 +1701,7 @@ skip_groups:
+ 			tailroom += os_strlen(auth->trusted_eap_server_name);
+ 		tailroom += 1000;
+ 	}
+-	buf = dpp_build_conf_start(auth, conf, tailroom);
++	buf = dpp_build_conf_start(auth, conf, tailroom, netrole);
+ 	if (!buf)
+ 		goto fail;
+ 
+@@ -1704,7 +1785,7 @@ dpp_build_conf_obj_legacy(struct dpp_authentication *auth,
+ 	struct wpabuf *buf;
+ 	const char *akm_str;
+ 
+-	buf = dpp_build_conf_start(auth, conf, 1000);
++	buf = dpp_build_conf_start(auth, conf, 1000, DPP_NETROLE_UNKNOWN);
+ 	if (!buf)
+ 		return NULL;
+ 
+@@ -1743,14 +1824,22 @@ dpp_build_conf_obj(struct dpp_authentication *auth, enum dpp_netrole netrole,
+ #endif /* CONFIG_TESTING_OPTIONS */
+ 
+ 	if (idx == 0) {
+-		if (netrole == DPP_NETROLE_STA)
++		if (netrole == DPP_NETROLE_STA ||
++		    netrole == DPP_NETROLE_MAP_AGENT ||
++		    netrole == DPP_NETROLE_MAP_BACKHAUL_STA)
+ 			conf = auth->conf_sta;
+-		else if (netrole == DPP_NETROLE_AP)
++		else if (netrole == DPP_NETROLE_AP ||
++			 netrole == DPP_NETROLE_MAP_CONTROLLER ||
++			 netrole == DPP_NETROLE_MAP_BACKHAUL_BSS)
+ 			conf = auth->conf_ap;
+ 	} else if (idx == 1) {
+-		if (netrole == DPP_NETROLE_STA)
++		if (netrole == DPP_NETROLE_STA ||
++		    netrole == DPP_NETROLE_MAP_AGENT ||
++		    netrole == DPP_NETROLE_MAP_BACKHAUL_STA)
+ 			conf = auth->conf2_sta;
+-		else if (netrole == DPP_NETROLE_AP)
++		else if (netrole == DPP_NETROLE_AP ||
++			 netrole == DPP_NETROLE_MAP_CONTROLLER ||
++			 netrole == DPP_NETROLE_MAP_BACKHAUL_BSS)
+ 			conf = auth->conf2_ap;
+ 	}
+ 	if (!conf) {
+@@ -1761,6 +1850,12 @@ dpp_build_conf_obj(struct dpp_authentication *auth, enum dpp_netrole netrole,
+ 		return NULL;
+ 	}
+ 
++	if (netrole == DPP_NETROLE_MAP_BACKHAUL_STA) {
++		/* Set akm to bss config req akm */
++		wpa_printf(MSG_DEBUG, "DPP: Set 1905 bSTA AKM : %d", auth->akm_1905);
++		conf->akm = auth->akm_1905;
++	}
++
+ 	if (conf->akm == DPP_AKM_DOT1X) {
+ 		if (!auth->conf) {
+ 			wpa_printf(MSG_DEBUG,
+@@ -1772,10 +1867,11 @@ dpp_build_conf_obj(struct dpp_authentication *auth, enum dpp_netrole netrole,
+ 				   "DPP: No certificate data available for dot1x configuration");
+ 			return NULL;
+ 		}
+-		return dpp_build_conf_obj_dpp(auth, conf);
++		return dpp_build_conf_obj_dpp(auth, conf, netrole);
+ 	}
+-	if (dpp_akm_dpp(conf->akm) || (auth->peer_version >= 2 && auth->conf))
+-		return dpp_build_conf_obj_dpp(auth, conf);
++	if (dpp_akm_dpp(conf->akm) || (auth->peer_version >= 2 && auth->conf)) {
++		return dpp_build_conf_obj_dpp(auth, conf, netrole);
++        }
+ 	return dpp_build_conf_obj_legacy(auth, conf);
+ }
+ 
+@@ -1801,6 +1897,20 @@ dpp_build_conf_resp(struct dpp_authentication *auth, const u8 *e_nonce,
+ #ifdef CONFIG_DPP2
+ 		env_data = dpp_build_enveloped_data(auth);
+ #endif /* CONFIG_DPP2 */
++	} else if (netrole == DPP_NETROLE_MAP_AGENT ||
++		   netrole == DPP_NETROLE_MAP_BACKHAUL_STA) {
++		if(auth->is_bsta_1905 == 1) {
++			/* Build first conf object for NETROLE mapAgent */
++			netrole = DPP_NETROLE_MAP_AGENT;
++			conf = dpp_build_conf_obj(auth, netrole, 0, cert_req);
++			if (conf) {
++				netrole = DPP_NETROLE_MAP_BACKHAUL_STA;
++				conf2 = dpp_build_conf_obj(auth, netrole, 1,
++							   cert_req);
++			}
++		} else {
++			conf = dpp_build_conf_obj(auth, netrole, 0, cert_req);
++		}
+ 	} else {
+ 		conf = dpp_build_conf_obj(auth, netrole, 0, cert_req);
+ 		if (conf) {
+@@ -1983,6 +2093,7 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
+ 	struct json_token *root = NULL, *token;
+ 	enum dpp_netrole netrole;
+ 	struct wpabuf *cert_req = NULL;
++	int dpp_map = auth->dpp_map;
+ 
+ #ifdef CONFIG_TESTING_OPTIONS
+ 	if (dpp_test == DPP_TEST_STOP_AT_CONF_REQ) {
+@@ -2066,7 +2177,7 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
+ 		goto fail;
+ 	}
+ 	wpa_printf(MSG_DEBUG, "DPP: wi-fi_tech = '%s'", token->string);
+-	if (os_strcmp(token->string, "infra") != 0) {
++	if (os_strcmp(token->string, "infra") != 0 && os_strcmp(token->string, "map")) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Unsupported wi-fi_tech '%s'",
+ 			   token->string);
+ 		dpp_auth_fail(auth, "Unsupported wi-fi_tech");
+@@ -2085,6 +2196,10 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
+ 		netrole = DPP_NETROLE_AP;
+ 	} else if (os_strcmp(token->string, "configurator") == 0) {
+ 		netrole = DPP_NETROLE_CONFIGURATOR;
++	} else if (os_strcmp(token->string, "mapAgent") == 0) {
++		netrole = DPP_NETROLE_MAP_AGENT;
++	} else if (os_strcmp(token->string, "mapBackhaulBss") == 0) {
++		netrole = DPP_NETROLE_MAP_BACKHAUL_BSS;
+ 	} else {
+ 		wpa_printf(MSG_DEBUG, "DPP: Unsupported netRole '%s'",
+ 			   token->string);
+@@ -2183,6 +2298,41 @@ dpp_conf_req_rx(struct dpp_authentication *auth, const u8 *attr_start,
+ cont:
+ #endif /* CONFIG_DPP2 */
+ 
++	/* for 1905 Support */
++	token = json_get_member(root, "bSTAList");
++	if (token && token->type == JSON_ARRAY) {
++		wpa_printf(MSG_DEBUG, "DPP: 1905 bSTA List found");
++		auth->is_bsta_1905 = 1;
++		netrole = DPP_NETROLE_MAP_BACKHAUL_STA;
++
++		token = token->child;
++		while (token) {
++			token = json_get_member(token, "akm");
++			if (!token)
++				goto fail;
++			if (token->type == JSON_STRING) {
++				wpa_printf(MSG_DEBUG, "DPP: 1905 akm = '%s'",
++					   token->string);
++				auth->akm_1905 =
++						dpp_akm_from_str(token->string);
++				wpa_printf(MSG_DEBUG,
++					   "DPP: 1905 bSTA AKM : %d",
++					   auth->akm_1905);
++				if (auth->akm_1905 == DPP_AKM_UNKNOWN) {
++					wpa_printf(MSG_DEBUG,
++						   "DPP: UnSupported 1905 akm = '%s'",
++						   token->string);
++					goto fail;
++				}
++				break;
++			}
++			token = token->sibling;
++		}
++	} else if (dpp_map) {
++		wpa_printf(MSG_DEBUG, "DPP: 1905 bSTA List Not found");
++		netrole = DPP_NETROLE_MAP_AGENT;
++	}
++
+ 	resp = dpp_build_conf_resp(auth, e_nonce, e_nonce_len, netrole,
+ 				   cert_req);
+ 
+@@ -2814,7 +2964,7 @@ static int dpp_parse_conf_obj(struct dpp_authentication *auth,
+ 	struct json_token *root, *token, *discovery, *cred;
+ 	struct dpp_config_obj *conf;
+ 	struct wpabuf *ssid64 = NULL;
+-	int legacy;
++	int legacy, is_1905_object = 0, is_discovery_obj = 0;
+ 
+ 	root = json_parse((const char *) conf_obj, conf_obj_len);
+ 	if (!root)
+@@ -2829,40 +2979,60 @@ static int dpp_parse_conf_obj(struct dpp_authentication *auth,
+ 		dpp_auth_fail(auth, "No wi-fi_tech string value found");
+ 		goto fail;
+ 	}
+-	if (os_strcmp(token->string, "infra") != 0) {
++	if (os_strcmp(token->string, "infra") != 0 &&
++	    os_strcmp(token->string, "map") != 0 &&
++	    os_strcmp(token->string, "inframap")) {
+ 		wpa_printf(MSG_DEBUG, "DPP: Unsupported wi-fi_tech value: '%s'",
+ 			   token->string);
+ 		dpp_auth_fail(auth, "Unsupported wi-fi_tech value");
+ 		goto fail;
+ 	}
+ 
+-	discovery = json_get_member(root, "discovery");
+-	if (!discovery || discovery->type != JSON_OBJECT) {
+-		dpp_auth_fail(auth, "No discovery object in JSON");
+-		goto fail;
++	token = json_get_member(root, "dfCounterThreshold");
++	if (token && token->type == JSON_NUMBER) {
++		wpa_printf(MSG_DEBUG, "DPP: 1905 dfCounterThreshold value: %d",
++			   token->number);
++		wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_DF_COUNT_THRESH "%d", token->number);
++		is_1905_object = 1;
+ 	}
+ 
+-	ssid64 = json_get_member_base64url(discovery, "ssid64");
+-	if (ssid64) {
+-		wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid64",
+-				  wpabuf_head(ssid64), wpabuf_len(ssid64));
+-		if (wpabuf_len(ssid64) > SSID_MAX_LEN) {
+-			dpp_auth_fail(auth, "Too long discovery::ssid64 value");
++	discovery = json_get_member(root, "discovery");
++	if (!discovery || discovery->type != JSON_OBJECT) {
++		is_discovery_obj = 0;
++		if (!is_1905_object) {
++			dpp_auth_fail(auth, "No discovery object in JSON");
+ 			goto fail;
+ 		}
+ 	} else {
+-		token = json_get_member(discovery, "ssid");
+-		if (!token || token->type != JSON_STRING) {
+-			dpp_auth_fail(auth,
+-				      "No discovery::ssid string value found");
+-			goto fail;
+-		}
+-		wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid",
+-				  token->string, os_strlen(token->string));
+-		if (os_strlen(token->string) > SSID_MAX_LEN) {
+-			dpp_auth_fail(auth,
++		is_discovery_obj = 1;
++		wpa_msg(auth->msg_ctx, MSG_INFO, DPP_EVENT_DISC_CONF);
++	}
++
++	if (is_discovery_obj) {
++		ssid64 = json_get_member_base64url(discovery, "ssid64");
++		if (ssid64) {
++			wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid64",
++					  wpabuf_head(ssid64),
++					  wpabuf_len(ssid64));
++			if (wpabuf_len(ssid64) > SSID_MAX_LEN) {
++				dpp_auth_fail(auth,
++					"Too long discovery::ssid64 value");
++				goto fail;
++			}
++		} else {
++			token = json_get_member(discovery, "ssid");
++			if (!token || token->type != JSON_STRING) {
++				dpp_auth_fail(auth,
++				     "No discovery::ssid string value found");
++				goto fail;
++			}
++			wpa_hexdump_ascii(MSG_DEBUG, "DPP: discovery::ssid",
++				token->string, os_strlen(token->string));
++			if (os_strlen(token->string) > SSID_MAX_LEN) {
++				dpp_auth_fail(auth,
+ 				      "Too long discovery::ssid string value");
+-			goto fail;
++				goto fail;
++			}
+ 		}
+ 	}
+ 
+@@ -2874,19 +3044,22 @@ static int dpp_parse_conf_obj(struct dpp_authentication *auth,
+ 	}
+ 	conf = &auth->conf_obj[auth->num_conf_obj++];
+ 
+-	if (ssid64) {
+-		conf->ssid_len = wpabuf_len(ssid64);
+-		os_memcpy(conf->ssid, wpabuf_head(ssid64), conf->ssid_len);
+-	} else {
+-		conf->ssid_len = os_strlen(token->string);
+-		os_memcpy(conf->ssid, token->string, conf->ssid_len);
+-	}
++	if (is_discovery_obj) {
++		if (ssid64) {
++			conf->ssid_len = wpabuf_len(ssid64);
++			os_memcpy(conf->ssid, wpabuf_head(ssid64),
++				  conf->ssid_len);
++		} else {
++			conf->ssid_len = os_strlen(token->string);
++			os_memcpy(conf->ssid, token->string, conf->ssid_len);
++		}
+ 
+-	token = json_get_member(discovery, "ssid_charset");
+-	if (token && token->type == JSON_NUMBER) {
+-		conf->ssid_charset = token->number;
+-		wpa_printf(MSG_DEBUG, "DPP: ssid_charset=%d",
+-			   conf->ssid_charset);
++		token = json_get_member(discovery, "ssid_charset");
++		if (token && token->type == JSON_NUMBER) {
++			conf->ssid_charset = token->number;
++			wpa_printf(MSG_DEBUG, "DPP: ssid_charset=%d",
++				   conf->ssid_charset);
++		}
+ 	}
+ 
+ 	cred = json_get_member(root, "cred");
+@@ -2912,6 +3085,16 @@ static int dpp_parse_conf_obj(struct dpp_authentication *auth,
+ 		    s_conn && s_conn->type == JSON_STRING)
+ 			legacy = 0;
+ 	}
++
++	if(is_1905_object) {
++		token = json_get_member(cred, "signedConnector");
++		if (!token || token->type != JSON_STRING) {
++			wpa_printf(MSG_DEBUG, 
++				   "DPP: No signedConnector string found");
++			goto fail;
++		}
++	}
++
+ 	if (legacy) {
+ 		if (dpp_parse_cred_legacy(conf, cred) < 0)
+ 			goto fail;
+@@ -3599,6 +3782,10 @@ int dpp_configurator_own_config(struct dpp_authentication *auth,
+ 		   "DPP: Building own configuration/connector with curve %s",
+ 		   auth->curve->name);
+ 
++#ifdef CONFIG_DPP2
++	auth->peer_version = 2;
++#endif
++
+ 	auth->own_protocol_key = dpp_gen_keypair(auth->curve);
+ 	if (!auth->own_protocol_key)
+ 		return -1;
+@@ -3607,6 +3794,12 @@ int dpp_configurator_own_config(struct dpp_authentication *auth,
+ 	dpp_copy_csign(&auth->conf_obj[0], auth->conf->csign);
+ 
+ 	conf_obj = dpp_build_conf_obj(auth, ap, 0, NULL);
++	if (auth->dpp_map) {
++		wpa_printf(MSG_INFO, "DPP: dpp_map: %d", auth->dpp_map);
++		conf_obj = dpp_build_conf_obj(auth, auth->conf_ap->netrole, 0, NULL);
++	} else {
++		conf_obj = dpp_build_conf_obj(auth, ap, 0, NULL);
++	}
+ 	if (!conf_obj) {
+ 		wpabuf_free(auth->conf_obj[0].c_sign_key);
+ 		auth->conf_obj[0].c_sign_key = NULL;
+@@ -3624,7 +3817,14 @@ fail:
+ static int dpp_compatible_netrole(const char *role1, const char *role2)
+ {
+ 	return (os_strcmp(role1, "sta") == 0 && os_strcmp(role2, "ap") == 0) ||
+-		(os_strcmp(role1, "ap") == 0 && os_strcmp(role2, "sta") == 0);
++		(os_strcmp(role1, "ap") == 0 && os_strcmp(role2, "sta") == 0) ||
++		(os_strcmp(role1, "sta") == 0 && os_strcmp(role2, "mapBackhaulBss") == 0) ||
++		(os_strcmp(role1, "mapBackhaulBss") == 0 && os_strcmp(role2, "sta") == 0) ||
++		(os_strcmp(role1, "mapAgent") == 0 && os_strcmp(role2, "mapAgent") == 0) ||
++		(os_strcmp(role1, "mapAgent") == 0 && os_strcmp(role2, "mapController") == 0) ||
++		(os_strcmp(role1, "mapBackhaulBss") == 0 && os_strcmp(role2, "mapBackhaulSta") == 0) ||
++		(os_strcmp(role1, "mapBackhaulSta") == 0 && os_strcmp(role2, "mapBackhaulBss") == 0) ||
++		(os_strcmp(role1, "mapController") == 0 && os_strcmp(role2, "mapAgent") == 0);
+ }
+ 
+ 
+diff --git a/src/common/dpp.h b/src/common/dpp.h
+index 22558a1..058deaa 100644
+--- a/src/common/dpp.h
++++ b/src/common/dpp.h
+@@ -213,6 +213,11 @@ enum dpp_netrole {
+ 	DPP_NETROLE_STA,
+ 	DPP_NETROLE_AP,
+ 	DPP_NETROLE_CONFIGURATOR,
++	DPP_NETROLE_MAP_CONTROLLER,
++	DPP_NETROLE_MAP_AGENT,
++	DPP_NETROLE_MAP_BACKHAUL_STA,
++	DPP_NETROLE_MAP_BACKHAUL_BSS,
++	DPP_NETROLE_UNKNOWN,
+ };
+ 
+ struct dpp_configuration {
+@@ -359,6 +364,8 @@ struct dpp_authentication {
+ 	unsigned int ignore_netaccesskey_mismatch:1;
+ #endif /* CONFIG_TESTING_OPTIONS */
+ 	int dpp_map;
++	u8 is_bsta_1905;
++	enum dpp_akm akm_1905;
+ };
+ 
+ struct dpp_configurator {
+diff --git a/src/common/dpp_tcp.c b/src/common/dpp_tcp.c
+index a279c12..bd37024 100644
+--- a/src/common/dpp_tcp.c
++++ b/src/common/dpp_tcp.c
+@@ -264,6 +264,9 @@ static void dpp_controller_start_gas_client(struct dpp_connection *conn)
+ 	struct wpabuf *buf;
+ 	const char *dpp_name;
+ 
++	if (auth->dpp_map) {
++		conn->netrole = DPP_NETROLE_MAP_AGENT;
++	}
+ 	dpp_name = conn->name ? conn->name : "Test";
+ 	buf = dpp_build_conf_req_helper(auth, dpp_name, conn->netrole, NULL,
+ 					NULL);
+diff --git a/src/common/ieee802_11_defs.h b/src/common/ieee802_11_defs.h
+index ef65746..1e63cd1 100644
+--- a/src/common/ieee802_11_defs.h
++++ b/src/common/ieee802_11_defs.h
+@@ -1358,6 +1358,7 @@ struct ieee80211_ampe_ie {
+ 
+ #define MULTI_AP_PROFILE_01          0x01
+ #define MULTI_AP_PROFILE_02          0x02
++#define MULTI_AP_PROFILE_03          0x03
+ /* Add the last profile */
+ #define MULTI_AP_PROFILE_MAX         0x03
+ 
+diff --git a/src/common/wpa_ctrl.h b/src/common/wpa_ctrl.h
+index 14963c2..720a540 100644
+--- a/src/common/wpa_ctrl.h
++++ b/src/common/wpa_ctrl.h
+@@ -202,6 +202,8 @@ extern "C" {
+ #define DPP_EVENT_BAND_SUPPORT "DPP-BAND-SUPPORT "
+ #define DPP_EVENT_CSR "DPP-CSR "
+ #define DPP_EVENT_CHIRP_RX "DPP-CHIRP-RX "
++#define DPP_EVENT_DF_COUNT_THRESH "DPP-DF-COUNT-THRESH "
++#define DPP_EVENT_DISC_CONF "DPP-DISC-CONF "
+ 
+ /* MESH events */
+ #define MESH_GROUP_STARTED "MESH-GROUP-STARTED "

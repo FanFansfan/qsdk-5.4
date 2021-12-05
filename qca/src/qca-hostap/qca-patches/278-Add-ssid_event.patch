@@ -1,0 +1,126 @@
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index e63b8f0..4b88169 100644
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -1818,6 +1818,7 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
+ 			  union wpa_event_data *data)
+ {
+ 	struct hostapd_data *hapd = ctx;
++	struct wps_context *wps = hapd->wps;
+ #ifndef CONFIG_NO_STDOUT_DEBUG
+ 	int level = MSG_DEBUG;
+ 
+@@ -2053,6 +2054,24 @@ void wpa_supplicant_event(void *ctx, enum wpa_event_type event,
+ 			data->wds_sta_interface.ifname,
+ 			data->wds_sta_interface.sta_addr);
+ 		break;
++	case EVENT_UPDATE_SSID:
++		if (data->update_ssid.ssid_len > SSID_MAX_LEN ||
++				data->update_ssid.ssid_len < 1) {
++			wpa_printf(MSG_ERROR, "Invalid SSID %s",
++					data->update_ssid.ssid);
++			break;
++		}
++		hapd->conf->ssid.ssid_len = data->update_ssid.ssid_len;
++		os_memcpy(hapd->conf->ssid.ssid, data->update_ssid.ssid,
++				hapd->conf->ssid.ssid_len);
++		hapd->conf->ssid.ssid_set = 1;
++		hostapd_reload_iface(hapd->iface);
++		if (wps) {
++			os_memcpy(wps->ssid, data->update_ssid.ssid,
++					sizeof(data->update_ssid.ssid));
++			wps->ssid_len = data->update_ssid.ssid_len;
++		}
++		break;
+ 	default:
+ 		wpa_printf(MSG_DEBUG, "Unknown event %d", event);
+ 		break;
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index a37352a..bc42a52 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -5069,6 +5069,11 @@ enum wpa_event_type {
+ 	 * is required to provide more details of the frame.
+ 	 */
+ 	EVENT_UNPROT_BEACON,
++
++	/**
++	 * EVENT_UPDATE_SSID - Notification of SSID Change
++	 */
++	EVENT_UPDATE_SSID,
+ };
+ 
+ 
+@@ -5929,6 +5934,14 @@ union wpa_event_data {
+ 	struct unprot_beacon {
+ 		const u8 *sa;
+ 	} unprot_beacon;
++
++	/**
++	 * struct update_ssid - Data for EVENT_UPDATE_SSID
++	 */
++	struct update_ssid {
++		u8 ssid[SSID_MAX_LEN + 1];
++		u32 ssid_len;
++	} update_ssid;
+ };
+ 
+ /**
+diff --git a/src/drivers/driver_common.c b/src/drivers/driver_common.c
+index a7ebe95..dd91ed3 100644
+--- a/src/drivers/driver_common.c
++++ b/src/drivers/driver_common.c
+@@ -90,6 +90,7 @@ const char * event_to_string(enum wpa_event_type event)
+ 	E2S(WDS_STA_INTERFACE_STATUS);
+ 	E2S(UPDATE_DH);
+ 	E2S(UNPROT_BEACON);
++	E2S(UPDATE_SSID);
+ 	}
+ 
+ 	return "UNKNOWN";
+diff --git a/src/drivers/driver_nl80211_event.c b/src/drivers/driver_nl80211_event.c
+index 182dbca..5edc98c 100644
+--- a/src/drivers/driver_nl80211_event.c
++++ b/src/drivers/driver_nl80211_event.c
+@@ -2204,6 +2204,31 @@ static void qca_nl80211_p2p_lo_stop_event(struct wpa_driver_nl80211_data *drv,
+ 	wpa_supplicant_event(drv->ctx, EVENT_P2P_LO_STOP, &event);
+ }
+ 
++static void qca_nl80211_update_ssid(struct wpa_driver_nl80211_data *drv,
++				    u8 *data, size_t len)
++{
++	struct hostapd_data *hapd = (struct hostapd_data *)drv->ctx;
++	struct nlattr *tb[NL80211_ATTR_SSID + 1];
++	union wpa_event_data event;
++
++	os_memset(&event, 0, sizeof(event));
++
++	if (nla_parse(tb, NL80211_ATTR_SSID,
++				(struct nlattr *)data, len, NULL) ||
++			!tb[NL80211_ATTR_SSID]) {
++		wpa_printf(MSG_DEBUG, "%s: nla parse failed", __func__);
++		return;
++	}
++
++	os_memcpy(event.update_ssid.ssid, nla_data(tb[NL80211_ATTR_SSID]),
++			SSID_MAX_LEN);
++	event.update_ssid.ssid_len = strnlen((char *)nla_data(tb[NL80211_ATTR_SSID]), nla_len(tb[NL80211_ATTR_SSID]));
++
++	wpa_printf(MSG_DEBUG,
++			"nl80211: Update_SSID SSID=%s len=%d",
++			event.update_ssid.ssid, event.update_ssid.ssid_len);
++	wpa_supplicant_event(drv->ctx, EVENT_UPDATE_SSID, &event);
++}
+ #endif /* CONFIG_DRIVER_NL80211_QCA */
+ 
+ 
+@@ -2240,6 +2265,9 @@ static void nl80211_vendor_event_qca(struct wpa_driver_nl80211_data *drv,
+ 	case QCA_NL80211_VENDOR_SUBCMD_P2P_LISTEN_OFFLOAD_STOP:
+ 		qca_nl80211_p2p_lo_stop_event(drv, data, len);
+ 		break;
++	case QCA_NL80211_VENDOR_SUBCMD_UPDATE_SSID:
++		qca_nl80211_update_ssid(drv, data, len);
++		break;
+ #endif /* CONFIG_DRIVER_NL80211_QCA */
+ 	default:
+ 		wpa_printf(MSG_DEBUG,

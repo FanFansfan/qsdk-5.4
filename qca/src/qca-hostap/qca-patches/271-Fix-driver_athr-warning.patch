@@ -1,0 +1,47 @@
+diff --git a/src/drivers/driver_athr.c b/src/drivers/driver_athr.c
+index 43851a2..3e740d9 100644
+--- a/src/drivers/driver_athr.c
++++ b/src/drivers/driver_athr.c
+@@ -2570,7 +2570,7 @@ static void athr_clear_bssid(struct driver_atheros_data *drv)
+ 
+ 
+ static int driver_atheros_deauthenticate(void *priv, const u8 *addr,
+-					 int reason_code)
++					 u16 reason_code)
+ {
+ 	struct driver_atheros_data *drv = priv;
+ 	int ret;
+@@ -3160,7 +3160,7 @@ static struct hostapd_hw_modes * athr_add_11b(struct hostapd_hw_modes *modes,
+ 
+ static struct hostapd_hw_modes * athr_get_hw_feature_data(void *priv,
+ 							  u16 *num_modes,
+-							  u16 *flags)
++							  u16 *flags, u8 *dfs_domain)
+ {
+ 	struct driver_atheros_data *drv = priv;
+ 	struct iwreq iwr;
+@@ -3540,7 +3540,7 @@ static int driver_atheros_if_remove(void *priv, enum wpa_driver_if_type type,
+ 
+ 
+ static int driver_atheros_hapd_sta_deauth(void *priv, const u8 *own_addr,
+-					  const u8 *addr, int reason_code)
++					  const u8 *addr, u16 reason_code)
+ {
+ 	struct driver_atheros_data *drv = priv;
+ 	struct ieee80211req_mlme mlme;
+@@ -3941,6 +3941,7 @@ static int athr_set_intra_bss(void *priv, int enabled)
+ }
+ 
+ 
++#ifdef ANDROID
+ static int athr_driver_acl(struct driver_atheros_data *drv, const char *cmd,
+ 			   char *buf, size_t buf_len)
+ {
+@@ -4012,7 +4013,6 @@ static int athr_driver_acl(struct driver_atheros_data *drv, const char *cmd,
+ 	return ret;
+ }
+ 
+-#ifdef ANDROID
+ /**
+  * athr_driver_cmd - Driver escape function
+  * @priv: Pointer to private wext data from driver_atheros_init()

@@ -1,0 +1,33 @@
+diff --git a/src/ap/ctrl_iface_ap.c b/src/ap/ctrl_iface_ap.c
+index a0e4474..81d8248 100644
+--- a/src/ap/ctrl_iface_ap.c
++++ b/src/ap/ctrl_iface_ap.c
+@@ -563,7 +563,7 @@ int hostapd_ctrl_iface_deauthenticate(struct hostapd_data *hapd,
+ 	sta = ap_get_sta(hapd, addr);
+ 	if (sta)
+ 		ap_sta_deauthenticate(hapd, sta, reason);
+-	else if (addr[0] == 0xff)
++	else if (is_broadcast_ether_addr(addr))
+ 		hostapd_free_stas(hapd);
+ 
+ 	return 0;
+diff --git a/src/ap/drv_callbacks.c b/src/ap/drv_callbacks.c
+index 064ed9d..29ffd73 100644
+--- a/src/ap/drv_callbacks.c
++++ b/src/ap/drv_callbacks.c
+@@ -701,9 +701,12 @@ void hostapd_notif_disassoc(struct hostapd_data *hapd, const u8 *addr)
+ 
+ 	sta = ap_get_sta(hapd, addr);
+ 	if (sta == NULL) {
+-		wpa_printf(MSG_DEBUG,
+-			   "Disassociation notification for unknown STA "
+-			   MACSTR, MAC2STR(addr));
++		if (is_broadcast_ether_addr(addr))
++			hostapd_free_stas(hapd);
++		else
++			wpa_printf(MSG_DEBUG,
++				   "Disassociation notification for unknown STA "
++				   MACSTR, MAC2STR(addr));
+ 		return;
+ 	}
+ 

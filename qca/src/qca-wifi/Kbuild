@@ -1,0 +1,17 @@
+# NOTE:
+# This Kbuild is NOT the main Kbuild for building WLAN driver.
+# It is invoked from main Makefile at os/linux/Makefile only if,
+# QCA_SINGLE_WIFI_3_0 is enabled.This is used only to combine driver
+# objects into a single ko and assumes WLAN driver is already built.
+
+ifeq ($(QCA_SINGLE_WIFI_3_0),1)
+obj-m += wifi_3_0_$(MULTI_IF_NAME).o
+wifi_3_0_$(MULTI_IF_NAME)-objs += \
+     cmn_dev/qdf/qdf.o \
+     asf/asf.o \
+     cmn_dev/spectral/qca_spectral.o \
+     qca_ol/qca_ol.o \
+     qca_ol/wifi3.0/wifi_3_0.o \
+     umac/umac.o
+endif
+

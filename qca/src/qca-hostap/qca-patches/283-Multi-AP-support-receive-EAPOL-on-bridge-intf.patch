@@ -1,0 +1,50 @@
+diff --git a/hostapd/main.c b/hostapd/main.c
+index 8bfe242..d07b9ed 100644
+--- a/hostapd/main.c
++++ b/hostapd/main.c
+@@ -30,6 +30,8 @@
+ #include "config_file.h"
+ #include "eap_register.h"
+ #include "ctrl_iface.h"
++#include "ap/ieee802_1x.h"
++#include "l2_packet/l2_packet.h"
+ 
+ 
+ struct hapd_global {
+@@ -145,6 +147,20 @@ static void hostapd_logger_cb(void *ctx, const u8 *addr, unsigned int module,
+ }
+ #endif /* CONFIG_NO_HOSTAPD_LOGGER */
+ 
++static void hostapd_vlan_receive(void *ctx, const u8 *src_addr, const u8 *buf,
++					size_t len)
++{
++	struct hostapd_data *hapd = ctx;
++	struct l2_ethhdr *ethhdr;
++	if (len < sizeof(*ethhdr))
++		return;
++	ethhdr = (struct l2_ethhdr *) buf;
++
++	wpa_dbg(ctx, MSG_DEBUG, "RX EAPOL from " MACSTR, MAC2STR(src_addr));
++	wpa_hexdump(MSG_MSGDUMP, "RX EAPOL", buf, len);
++
++	ieee802_1x_receive(hapd, src_addr, buf + sizeof(*ethhdr), len - sizeof(*ethhdr) );
++}
+ 
+ /**
+  * hostapd_driver_init - Preparate driver interface
+@@ -213,6 +229,15 @@ static int hostapd_driver_init(struct hostapd_iface *iface)
+ 		return -1;
+ 	}
+ 
++	if (( hapd->conf->vlan_bridge)) {
++		hapd->l2 = l2_packet_init(hapd->conf->vlan_bridge, hapd->own_addr, ETH_P_EAPOL,
++							hostapd_vlan_receive, hapd, 1);
++		if (hapd->l2 == NULL) {
++			wpa_printf(MSG_ERROR, "Failed to open l2_packet "
++					"interface for vlan bridge");
++		}
++	}
++
+ 	if (hapd->driver->get_capa &&
+ 	    hapd->driver->get_capa(hapd->drv_priv, &capa) == 0) {
+ 		struct wowlan_triggers *triggs;

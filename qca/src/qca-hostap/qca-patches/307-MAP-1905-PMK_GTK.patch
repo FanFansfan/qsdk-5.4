@@ -1,0 +1,116 @@
+diff --git a/src/ap/wpa_auth.c b/src/ap/wpa_auth.c
+index e60d129..1c74982 100644
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -3988,6 +3988,23 @@ SM_STEP(WPA_PTK_GROUP)
+ }
+ 
+ 
++int wpa_gtk_init(struct wpa_authenticator *wpa_auth,
++					  u8 *gtk, size_t gtk_len)
++{
++	struct wpa_group *group = wpa_auth->group;
++	if(group->GTK_len == gtk_len) {
++		os_memcpy(group->GTK[group->GN - 1], gtk, gtk_len);
++		group->first_sta_seen = true;
++		group->reject_4way_hs_for_entropy = false;
++		wpa_hexdump_key(MSG_DEBUG, "GTK",
++			group->GTK[group->GN - 1], group->GTK_len);
++	} else {
++		wpa_printf(MSG_DEBUG, "WPA: Invalid GTK key len");
++
++	}
++	return 0;
++}
++
+ static int wpa_gtk_update(struct wpa_authenticator *wpa_auth,
+ 			  struct wpa_group *group)
+ {
+diff --git a/src/ap/wpa_auth.h b/src/ap/wpa_auth.h
+index 539e977..2fa95e6 100644
+--- a/src/ap/wpa_auth.h
++++ b/src/ap/wpa_auth.h
+@@ -338,6 +338,8 @@ struct wpa_authenticator * wpa_init(const u8 *addr,
+ 				    struct wpa_auth_config *conf,
+ 				    const struct wpa_auth_callbacks *cb,
+ 				    void *cb_ctx);
++int wpa_gtk_init(struct wpa_authenticator *wpa_auth,
++					  u8 *gtk, size_t gtk_len);
+ int wpa_init_keys(struct wpa_authenticator *wpa_auth);
+ void wpa_deinit(struct wpa_authenticator *wpa_auth);
+ int wpa_reconfig(struct wpa_authenticator *wpa_auth,
+diff --git a/src/drivers/eap1905.c b/src/drivers/eap1905.c
+index e0761e0..51a69d2 100644
+--- a/src/drivers/eap1905.c
++++ b/src/drivers/eap1905.c
+@@ -67,6 +67,8 @@ enum events {
+ 	EVENT_1905_EAPOL,
+ 	EVENT_SETKEY,
+ 	EVENT_GROUP_KEY,
++	EVENT_UPDATE_PMK,
++	EVENT_UPDATE_GTK,
+ };
+ 
+ int eapol_1905_sock = -1;
+@@ -168,9 +170,10 @@ static int wpa_1905_send_eapol(void *ctx, const u8 *addr, const u8 *data,
+ }
+ 
+ 
+-static int assoc_init(struct wpa_1905 *wpa)
++static int assoc_init(struct wpa_1905 *wpa, int index)
+ {
+-	int i = wpa->sta_count ;
++	int i = index;
++	wpa_printf(MSG_DEBUG, "ASSOC: i=%d ", i);
+ 	wpa->auth[i] = wpa_auth_sta_init(wpa->auth_group,
+ 					 wpa->supp_addr[i], NULL);
+ 	if (!wpa->auth[i]) {
+@@ -266,16 +269,32 @@ static void eapol_1905_rx_receive(int sock, void *eloop_ctx, void *sock_ctx)
+ 
+ 	if (buf[0] == EVENT_1905_ASSOC) {
+ 		struct assoc *new_assoc = (struct assoc *) &buf[1];
++		int i = 0;
++		int sta_found = 0;
++
++		for (i = 0; i < wpa->sta_count; ) {
++			wpa_printf(MSG_DEBUG, "ASSOC: i=%d addr= " MACSTR, i, MAC2STR(new_assoc->mac_addr));
++			if (!os_memcmp(wpa->supp_addr[i], new_assoc->mac_addr, ETH_ALEN)) {
++				wpa_auth_sta_deinit(wpa->auth[i]);
++				wpa->sta_count--;
++				sta_found = 1;
++				break;
++			}
++			i++;
++		}
+ 
+ 		if (wpa->sta_count < MAX_AUTH) {
+-			os_memcpy(wpa->supp_addr[wpa->sta_count],
++			os_memcpy(wpa->supp_addr[i],
+ 				  new_assoc->mac_addr, ETH_ALEN);
+ 			wpa->supp_ie_len = new_assoc->supp_ie_len;
+ 			os_memcpy(wpa->supp_ie,
+ 				  new_assoc->supp_ie, wpa->supp_ie_len);
+ 			os_memcpy(wpa->pmkid, new_assoc->pmkid, PMKID_LEN);
+ 
+-			if (!assoc_init(wpa))
++			wpa_hexdump(MSG_ERROR, "PMKID", new_assoc->pmkid, PMKID_LEN);
++			wpa_hexdump(MSG_ERROR, "supp_ie", new_assoc->supp_ie, new_assoc->supp_ie_len);
++
++			if (!assoc_init(wpa,i))
+ 				wpa->sta_count++;
+ 		} else {
+ 			wpa_printf(MSG_ERROR, "STA Assoc max count reached");
+@@ -314,8 +333,12 @@ static void eapol_1905_rx_receive(int sock, void *eloop_ctx, void *sock_ctx)
+ 	} else if (buf[0] == EVENT_GROUP_KEY) {
+ 		if (wpa->auth_group)
+ 			wpa_auth_reconfig_group_keys(wpa->auth_group);
++	} else if (buf[0] == EVENT_UPDATE_PMK) {
++		os_memcpy(wpa->psk, &buf[1], PMK_LEN);
++	} else if (buf[0] == EVENT_UPDATE_GTK) {
++		wpa_hexdump(MSG_ERROR, "GTK", &buf[2], buf[1]);
++		 wpa_gtk_init(wpa->auth_group, &buf[2],buf[1]);
+ 	}
+-
+ }
+ 
+ int eapol_1905_init()

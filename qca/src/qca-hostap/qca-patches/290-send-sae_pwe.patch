@@ -1,0 +1,111 @@
+diff --git a/src/ap/beacon.c b/src/ap/beacon.c
+index b3b33b7..91453a4 100644
+--- a/src/ap/beacon.c
++++ b/src/ap/beacon.c
+@@ -1507,7 +1507,9 @@ int ieee802_11_set_beacon(struct hostapd_data *hapd)
+ 							    IEEE80211_MODE_AP);
+ #endif /* CONFIG_IEEE80211AX */
+ 	hapd->reenable_beacon = 0;
+-
++#ifdef CONFIG_SAE
++	params.sae_pwe = hapd->conf->sae_pwe;
++#endif
+ 	if (cmode &&
+ 	    hostapd_set_freq_params(&freq, iconf->hw_mode, iface->freq,
+ 				    iconf->channel, iconf->enable_edmg,
+diff --git a/src/drivers/driver.h b/src/drivers/driver.h
+index ddfa905..92d6142 100644
+--- a/src/drivers/driver.h
++++ b/src/drivers/driver.h
+@@ -1189,6 +1189,14 @@ struct wpa_driver_associate_params {
+ 	 * fils_erp_rrk_len - Length of fils_erp_rrk in bytes
+ 	 */
+ 	size_t fils_erp_rrk_len;
++
++	/**
++	 * sae_pwe - SAE mechanism for PWE derivation
++	 * 0 = hunting-and-pecking loop only
++	 * 1 = hash-to-element only
++	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
++	 */
++	int sae_pwe;
+ };
+ 
+ enum hide_ssid {
+@@ -1508,6 +1516,14 @@ struct wpa_driver_ap_params {
+ 	 * twt_responder - Whether Target Wait Time responder is enabled
+ 	 */
+ 	int twt_responder;
++
++	/**
++	 * sae_pwe - SAE mechanism for PWE derivation
++	 * 0 = hunting-and-pecking loop only
++	 * 1 = hash-to-element only
++	 * 2 = both hunting-and-pecking loop and hash-to-element enabled
++	 */
++	int sae_pwe;
+ };
+ 
+ struct wpa_driver_mesh_bss_params {
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index ea16d8d..0dfafe1 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -4557,6 +4557,15 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 	}
+ #endif /* CONFIG_IEEE80211AX */
+ 
++#ifdef CONFIG_SAE
++	if ((params->key_mgmt_suites & WPA_KEY_MGMT_SAE) ||
++	    (params->key_mgmt_suites & WPA_KEY_MGMT_FT_SAE)) {
++		wpa_printf(MSG_DEBUG, "nl802111: sae_pwe=%d", params->sae_pwe);
++		if (nla_put_u16(msg, NL80211_ATTR_SAE_PWE, params->sae_pwe))
++			goto fail;
++	}
++#endif
++
+ 	ret = send_and_recv_msgs_owner(drv, msg, get_connect_handle(bss), 1,
+ 				       NULL, NULL, NULL, NULL);
+ 	if (ret) {
+@@ -5887,6 +5896,15 @@ static int nl80211_connect_common(struct wpa_driver_nl80211_data *drv,
+ 			return -1;
+ 	}
+ 
++#ifdef CONFIG_SAE
++	if (params->key_mgmt_suite == WPA_KEY_MGMT_SAE ||
++	    params->key_mgmt_suite == WPA_KEY_MGMT_FT_SAE) {
++		wpa_printf(MSG_DEBUG, "  * sae_pwe=%d", params->sae_pwe);
++		if (nla_put_u16(msg, NL80211_ATTR_SAE_PWE, params->sae_pwe))
++			return -1;
++	}
++#endif
++
+ 	if (params->pairwise_suite != WPA_CIPHER_NONE) {
+ 		u32 cipher = wpa_cipher_to_cipher_suite(params->pairwise_suite);
+ 		wpa_printf(MSG_DEBUG, "  * pairwise=0x%x", cipher);
+diff --git a/src/drivers/nl80211_copy.h b/src/drivers/nl80211_copy.h
+index dad8c8f..401b179 100644
+--- a/src/drivers/nl80211_copy.h
++++ b/src/drivers/nl80211_copy.h
+@@ -2986,6 +2986,7 @@ enum nl80211_attrs {
+ 	NL80211_ATTR_SCAN_FREQ_KHZ,
+ 
+ 	NL80211_ATTR_HE_6GHZ_CAPABILITY,
++	NL80211_ATTR_SAE_PWE,
+ 
+ 	/* add attributes here, update the policy in nl80211.c */
+ 
+diff --git a/wpa_supplicant/wpa_supplicant.c b/wpa_supplicant/wpa_supplicant.c
+index e7989ba..269e1bf 100644
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -3780,6 +3780,9 @@ static void wpas_start_assoc_cb(struct wpa_radio_work *work, int deinit)
+ 	    wpa_s->current_ssid)
+ 		params.prev_bssid = prev_bssid;
+ 
++#ifdef CONFIG_SAE
++	params.sae_pwe = wpa_s->conf->sae_pwe;
++#endif
+ 	ret = wpa_drv_associate(wpa_s, &params);
+ 	os_free(wpa_ie);
+ 	if (ret < 0) {

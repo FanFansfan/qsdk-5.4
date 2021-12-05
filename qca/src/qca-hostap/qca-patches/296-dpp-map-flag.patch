@@ -1,0 +1,477 @@
+diff --git a/hostapd/config_file.c b/hostapd/config_file.c
+index a696852..dbcb84d 100644
+--- a/hostapd/config_file.c
++++ b/hostapd/config_file.c
+@@ -4403,6 +4403,13 @@ static int hostapd_config_fill(struct hostapd_config *conf,
+ 	} else if (os_strcmp(buf, "dpp_csign") == 0) {
+ 		if (parse_wpabuf_hex(line, buf, &bss->dpp_csign, pos))
+ 			return 1;
++	} else if (os_strcmp(buf, "dpp_map") == 0) {
++		int val = atoi(pos);
++
++		if (val < 0 || val > 1) {
++			return -1;
++		}
++		bss->dpp_map = val;
+ #ifdef CONFIG_DPP2
+ 	} else if (os_strcmp(buf, "dpp_controller") == 0) {
+ 		if (hostapd_dpp_controller_parse(bss, pos))
+diff --git a/hostapd/main.c b/hostapd/main.c
+index 5ccd369..64ce41a 100644
+--- a/hostapd/main.c
++++ b/hostapd/main.c
+@@ -703,6 +703,7 @@ int main(int argc, char *argv[])
+ 	dpp_conf.cb_ctx = &interfaces;
+ #ifdef CONFIG_DPP2
+ 	dpp_conf.remove_bi = hostapd_dpp_remove_bi;
++	dpp_conf.get_dpp_map_flag = hostapd_dpp_get_map_flag;
+ #endif /* CONFIG_DPP2 */
+ 	interfaces.dpp = dpp_global_init(&dpp_conf);
+ 	if (!interfaces.dpp)
+diff --git a/src/ap/ap_config.h b/src/ap/ap_config.h
+index bc9d568..4c3290f 100644
+--- a/src/ap/ap_config.h
++++ b/src/ap/ap_config.h
+@@ -743,6 +743,7 @@ struct hostapd_bss_config {
+ 	struct wpabuf *dpp_netaccesskey;
+ 	unsigned int dpp_netaccesskey_expiry;
+ 	struct wpabuf *dpp_csign;
++	int dpp_map;
+ #ifdef CONFIG_DPP2
+ 	struct dpp_controller_conf *dpp_controller;
+ 	int dpp_configurator_connectivity;
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+index c9c03f9..6177b3d 100644
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -584,6 +584,7 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
+ 	struct hostapd_ip_addr ipaddr;
+ 	char *addr;
+ #endif /* CONFIG_DPP2 */
++	int dpp_map = 0;
+ 
+ 	pos = os_strstr(cmd, " peer=");
+ 	if (!pos)
+@@ -679,10 +680,13 @@ int hostapd_dpp_auth_init(struct hostapd_data *hapd, const char *cmd)
+ 				&flags, &dfs_domain);
+ 	}
+ 
++	if (hapd->conf->dpp_map)
++		dpp_map = hapd->conf->dpp_map;
++
+ 	auth = dpp_auth_init(hapd->iface->interfaces->dpp, hapd->msg_ctx,
+ 			     peer_bi, own_bi, allowed_roles, neg_freq,
+ 			     own_modes,
+-			     num_modes);
++			     num_modes, dpp_map);
+ 	if (!auth)
+ 		goto fail;
+ 	hostapd_dpp_set_testing_options(hapd, auth);
+@@ -753,6 +757,7 @@ static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
+ 	const u8 *r_bootstrap, *i_bootstrap;
+ 	u16 r_bootstrap_len, i_bootstrap_len;
+ 	struct dpp_bootstrap_info *own_bi = NULL, *peer_bi = NULL;
++	int dpp_map = 0;
+ 
+ 	if (!hapd->iface->interfaces->dpp)
+ 		return;
+@@ -809,10 +814,15 @@ static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
+ 	}
+ 
+ 	hapd->dpp_auth_ok_on_ack = 0;
++
++	if (hapd->conf && hapd->conf->dpp_map)
++		dpp_map = hapd->conf->dpp_map;
++
+ 	hapd->dpp_auth = dpp_auth_req_rx(hapd->iface->interfaces->dpp,
+ 					 hapd->msg_ctx, hapd->dpp_allowed_roles,
+ 					 hapd->dpp_qr_mutual,
+-					 peer_bi, own_bi, freq, hdr, buf, len);
++					 peer_bi, own_bi, freq, hdr, buf, len,
++					 dpp_map);
+ 	if (!hapd->dpp_auth) {
+ 		wpa_printf(MSG_DEBUG, "DPP: No response generated");
+ 		return;
+@@ -1288,6 +1298,7 @@ hostapd_dpp_rx_presence_announcement(struct hostapd_data *hapd, const u8 *src,
+ 	u16 r_bootstrap_len;
+ 	struct dpp_bootstrap_info *peer_bi;
+ 	struct dpp_authentication *auth;
++	int dpp_map = 0;
+ 
+ 	wpa_printf(MSG_DEBUG, "DPP: Presence Announcement from " MACSTR,
+ 		   MAC2STR(src));
+@@ -1322,9 +1333,12 @@ hostapd_dpp_rx_presence_announcement(struct hostapd_data *hapd, const u8 *src,
+ 		return;
+ 	}
+ 
++	if (hapd->conf && hapd->conf->dpp_map)
++		dpp_map = hapd->conf->dpp_map;
++
+ 	auth = dpp_auth_init(hapd->iface->interfaces->dpp, hapd->msg_ctx,
+ 			     peer_bi, NULL, DPP_CAPAB_CONFIGURATOR, freq, NULL,
+-			     0);
++			     0, dpp_map);
+ 	if (!auth)
+ 		return;
+ 	hostapd_dpp_set_testing_options(hapd, auth);
+@@ -2076,6 +2090,9 @@ int hostapd_dpp_configurator_sign(struct hostapd_data *hapd, const char *cmd)
+ 	if (!auth)
+ 		return -1;
+ 
++	if (hapd->conf->dpp_map)
++		auth->dpp_map = hapd->conf->dpp_map;
++
+ 	curve = get_param(cmd, " curve=");
+ 	hostapd_dpp_set_testing_options(hapd, auth);
+ 	if (dpp_set_configurator(auth, cmd) == 0 &&
+@@ -2659,6 +2676,16 @@ void hostapd_dpp_chirp_stop(struct hostapd_data *hapd)
+ 	}
+ }
+ 
++int hostapd_dpp_get_map_flag(void *ctx)
++{
++	struct hostapd_data *hapd = ctx;
++	int dpp_map = 0;
++
++	if (hapd && hapd->conf && hapd->conf->dpp_map)
++		dpp_map = hapd->conf->dpp_map;
++
++	return dpp_map;
++}
+ 
+ static int handle_dpp_remove_bi(struct hostapd_iface *iface, void *ctx)
+ {
+diff --git a/src/ap/dpp_hostapd.h b/src/ap/dpp_hostapd.h
+index 067b49e..5a7be0d 100644
+--- a/src/ap/dpp_hostapd.h
++++ b/src/ap/dpp_hostapd.h
+@@ -48,5 +48,6 @@ int hostapd_dpp_controller_start(struct hostapd_data *hapd, const char *cmd);
+ int hostapd_dpp_chirp(struct hostapd_data *hapd, const char *cmd);
+ void hostapd_dpp_chirp_stop(struct hostapd_data *hapd);
+ void hostapd_dpp_remove_bi(void *ctx, struct dpp_bootstrap_info *bi);
++int hostapd_dpp_get_map_flag(void *ctx);
+ 
+ #endif /* DPP_HOSTAPD_H */
+diff --git a/src/common/dpp.c b/src/common/dpp.c
+index 9b5dfeb..e39d9fe 100644
+--- a/src/common/dpp.c
++++ b/src/common/dpp.c
+@@ -4437,6 +4437,7 @@ struct dpp_global * dpp_global_init(struct dpp_global_config *config)
+ #ifdef CONFIG_DPP2
+ 	dpp->cb_ctx = config->cb_ctx;
+ 	dpp->remove_bi = config->remove_bi;
++	dpp->get_dpp_map_flag = config->get_dpp_map_flag;
+ #endif /* CONFIG_DPP2 */
+ 
+ 	dl_list_init(&dpp->bootstrap);
+diff --git a/src/common/dpp.h b/src/common/dpp.h
+index 24cff25..22558a1 100644
+--- a/src/common/dpp.h
++++ b/src/common/dpp.h
+@@ -358,6 +358,7 @@ struct dpp_authentication {
+ 	char *groups_override;
+ 	unsigned int ignore_netaccesskey_mismatch:1;
+ #endif /* CONFIG_TESTING_OPTIONS */
++	int dpp_map;
+ };
+ 
+ struct dpp_configurator {
+@@ -526,13 +527,13 @@ struct dpp_authentication * dpp_auth_init(struct dpp_global *dpp, void *msg_ctx,
+ 					  u8 dpp_allowed_roles,
+ 					  unsigned int neg_freq,
+ 					  struct hostapd_hw_modes *own_modes,
+-					  u16 num_modes);
++					  u16 num_modes, int dpp_map);
+ struct dpp_authentication *
+ dpp_auth_req_rx(struct dpp_global *dpp, void *msg_ctx, u8 dpp_allowed_roles,
+ 			int qr_mutual, struct dpp_bootstrap_info *peer_bi,
+ 		struct dpp_bootstrap_info *own_bi,
+ 		unsigned int freq, const u8 *hdr, const u8 *attr_start,
+-		size_t attr_len);
++		size_t attr_len, int dpp_map);
+ struct wpabuf *
+ dpp_auth_resp_rx(struct dpp_authentication *auth, const u8 *hdr,
+ 		 const u8 *attr_start, size_t attr_len);
+@@ -696,6 +697,7 @@ void dpp_notify_chirp_received(void *msg_ctx, int id, const u8 *src,
+ struct dpp_global_config {
+ 	void *cb_ctx;
+ 	void (*remove_bi)(void *ctx, struct dpp_bootstrap_info *bi);
++	int (*get_dpp_map_flag)(void *ctx);
+ };
+ 
+ struct dpp_global * dpp_global_init(struct dpp_global_config *config);
+diff --git a/src/common/dpp_auth.c b/src/common/dpp_auth.c
+index 8baa3ae..9350c23 100644
+--- a/src/common/dpp_auth.c
++++ b/src/common/dpp_auth.c
+@@ -671,7 +671,7 @@ dpp_auth_req_rx(struct dpp_global *dpp, void *msg_ctx, u8 dpp_allowed_roles,
+ 		int qr_mutual, struct dpp_bootstrap_info *peer_bi,
+ 		struct dpp_bootstrap_info *own_bi,
+ 		unsigned int freq, const u8 *hdr, const u8 *attr_start,
+-		size_t attr_len)
++		size_t attr_len, int dpp_map)
+ {
+ 	EVP_PKEY *pi = NULL;
+ 	EVP_PKEY_CTX *ctx = NULL;
+@@ -712,6 +712,7 @@ dpp_auth_req_rx(struct dpp_global *dpp, void *msg_ctx, u8 dpp_allowed_roles,
+ 	auth = dpp_alloc_auth(dpp, msg_ctx);
+ 	if (!auth)
+ 		goto fail;
++	auth->dpp_map = dpp_map;
+ 	if (peer_bi && peer_bi->configurator_params &&
+ 	    dpp_set_configurator(auth, peer_bi->configurator_params) < 0)
+ 		goto fail;
+@@ -1168,7 +1169,7 @@ struct dpp_authentication * dpp_auth_init(struct dpp_global *dpp, void *msg_ctx,
+ 					  u8 dpp_allowed_roles,
+ 					  unsigned int neg_freq,
+ 					  struct hostapd_hw_modes *own_modes,
+-					  u16 num_modes)
++					  u16 num_modes, int dpp_map)
+ {
+ 	struct dpp_authentication *auth;
+ 	size_t nonce_len;
+@@ -1182,6 +1183,7 @@ struct dpp_authentication * dpp_auth_init(struct dpp_global *dpp, void *msg_ctx,
+ 	auth = dpp_alloc_auth(dpp, msg_ctx);
+ 	if (!auth)
+ 		return NULL;
++	auth->dpp_map = dpp_map;
+ 	if (peer_bi->configurator_params &&
+ 	    dpp_set_configurator(auth, peer_bi->configurator_params) < 0)
+ 		goto fail;
+diff --git a/src/common/dpp_i.h b/src/common/dpp_i.h
+index af12467..cbfcde9 100644
+--- a/src/common/dpp_i.h
++++ b/src/common/dpp_i.h
+@@ -23,6 +23,7 @@ struct dpp_global {
+ 	void *cb_ctx;
+ 	int (*process_conf_obj)(void *ctx, struct dpp_authentication *auth);
+ 	void (*remove_bi)(void *ctx, struct dpp_bootstrap_info *bi);
++	int (*get_dpp_map_flag)(void *ctx);
+ #endif /* CONFIG_DPP2 */
+ };
+ 
+diff --git a/src/common/dpp_tcp.c b/src/common/dpp_tcp.c
+index 7e330d6..a279c12 100644
+--- a/src/common/dpp_tcp.c
++++ b/src/common/dpp_tcp.c
+@@ -589,6 +589,7 @@ static int dpp_controller_rx_auth_req(struct dpp_connection *conn,
+ 	const u8 *r_bootstrap, *i_bootstrap;
+ 	u16 r_bootstrap_len, i_bootstrap_len;
+ 	struct dpp_bootstrap_info *own_bi = NULL, *peer_bi = NULL;
++	int dpp_map = 0;
+ 
+ 	if (!conn->ctrl)
+ 		return 0;
+@@ -631,10 +632,15 @@ static int dpp_controller_rx_auth_req(struct dpp_connection *conn,
+ 		return 0;
+ 	}
+ 
++	if (conn->global->get_dpp_map_flag) {
++                dpp_map = conn->global->get_dpp_map_flag(conn->cb_ctx);
++        }
++        wpa_printf(MSG_DEBUG, "DPP: map flag is %d in %s\n", dpp_map, __func__);
++
+ 	conn->auth = dpp_auth_req_rx(conn->ctrl->global, conn->msg_ctx,
+ 				     conn->ctrl->allowed_roles,
+ 				     conn->ctrl->qr_mutual,
+-				     peer_bi, own_bi, -1, hdr, buf, len);
++				     peer_bi, own_bi, -1, hdr, buf, len, dpp_map);
+ 	if (!conn->auth) {
+ 		wpa_printf(MSG_DEBUG, "DPP: No response generated");
+ 		return -1;
+@@ -801,6 +807,7 @@ static int dpp_controller_rx_presence_announcement(struct dpp_connection *conn,
+ 	struct dpp_bootstrap_info *peer_bi;
+ 	struct dpp_authentication *auth;
+ 	struct dpp_global *dpp = conn->ctrl->global;
++	int dpp_map = 0;
+ 
+ 	if (conn->auth) {
+ 		wpa_printf(MSG_DEBUG,
+@@ -826,8 +833,13 @@ static int dpp_controller_rx_presence_announcement(struct dpp_connection *conn,
+ 		return -1;
+ 	}
+ 
++	if (conn->global->get_dpp_map_flag) {
++                dpp_map = conn->global->get_dpp_map_flag(conn->cb_ctx);
++        }
++        wpa_printf(MSG_DEBUG, "DPP: map flag is %d in %s\n", dpp_map, __func__);
++
+ 	auth = dpp_auth_init(dpp, conn->msg_ctx, peer_bi, NULL,
+-			     DPP_CAPAB_CONFIGURATOR, -1, NULL, 0);
++			     DPP_CAPAB_CONFIGURATOR, -1, NULL, 0, dpp_map);
+ 	if (!auth)
+ 		return -1;
+ 	if (dpp_set_configurator(auth, conn->ctrl->configurator_params) < 0) {
+diff --git a/wpa_supplicant/config.c b/wpa_supplicant/config.c
+index 5932636..2df4722 100644
+--- a/wpa_supplicant/config.c
++++ b/wpa_supplicant/config.c
+@@ -5082,6 +5082,7 @@ static const struct global_parse_data global_fields[] = {
+ 	{ INT_RANGE(dpp_config_processing, 0, 2), 0 },
+ 	{ STR(dpp_name), 0 },
+ 	{ STR(dpp_mud_url), 0 },
++	{ INT_RANGE(dpp_map, 0, 1), 0 },
+ #endif /* CONFIG_DPP */
+ 	{ INT_RANGE(coloc_intf_reporting, 0, 1), 0 },
+ #ifdef CONFIG_WNM
+diff --git a/wpa_supplicant/config.h b/wpa_supplicant/config.h
+index a385da5..7e2c83b 100644
+--- a/wpa_supplicant/config.h
++++ b/wpa_supplicant/config.h
+@@ -757,6 +757,13 @@ struct wpa_config {
+ 	 */
+ 	int wps_cred_add_sae;
+ 
++	/**
++	 * dpp_map - DPP MAP
++	 * 0: non map dpp
++	 * 1: map dpp enabled
++	 */
++	int dpp_map;
++
+ #define MAX_SEC_DEVICE_TYPES 5
+ 	/**
+ 	 * sec_device_types - Secondary Device Types (P2P)
+diff --git a/wpa_supplicant/config_file.c b/wpa_supplicant/config_file.c
+index bdd16ce..02bb137 100644
+--- a/wpa_supplicant/config_file.c
++++ b/wpa_supplicant/config_file.c
+@@ -1653,6 +1653,8 @@ static void wpa_config_write_global(FILE *f, struct wpa_config *config)
+ 	if (config->extended_key_id != DEFAULT_EXTENDED_KEY_ID)
+ 		fprintf(f, "extended_key_id=%d\n",
+ 			config->extended_key_id);
++	if (config->dpp_map)
++		fprintf(f, "dpp_map=%d\n", config->dpp_map);
+ }
+ 
+ #endif /* CONFIG_NO_CONFIG_WRITE */
+diff --git a/wpa_supplicant/config_winreg.c b/wpa_supplicant/config_winreg.c
+index 1b7f96e..fe4ee79 100644
+--- a/wpa_supplicant/config_winreg.c
++++ b/wpa_supplicant/config_winreg.c
+@@ -286,6 +286,7 @@ static int wpa_config_read_global(struct wpa_config *config, HKEY hk)
+ 		}
+ 		config->extended_key_id = val;
+ 	}
++	wpa_config_read_reg_dword(hk, TEXT("dpp_map"), &config->dpp_map);
+ 
+ 	return errors ? -1 : 0;
+ }
+diff --git a/wpa_supplicant/dpp_supplicant.c b/wpa_supplicant/dpp_supplicant.c
+index ee52511..dce7b80 100644
+--- a/wpa_supplicant/dpp_supplicant.c
++++ b/wpa_supplicant/dpp_supplicant.c
+@@ -750,6 +750,7 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
+ 	u8 allowed_roles = DPP_CAPAB_CONFIGURATOR;
+ 	unsigned int neg_freq = 0;
+ 	int tcp = 0;
++	int dpp_map = 0;
+ #ifdef CONFIG_DPP2
+ 	int tcp_port = DPP_TCP_PORT;
+ 	struct hostapd_ip_addr ipaddr;
+@@ -853,8 +854,11 @@ int wpas_dpp_auth_init(struct wpa_supplicant *wpa_s, const char *cmd)
+ 		wpa_s->dpp_auth = NULL;
+ 	}
+ 
++	if (wpa_s->conf->dpp_map)
++		dpp_map = wpa_s->conf->dpp_map;
++
+ 	auth = dpp_auth_init(wpa_s->dpp, wpa_s, peer_bi, own_bi, allowed_roles,
+-			     neg_freq, wpa_s->hw.modes, wpa_s->hw.num_modes);
++			     neg_freq, wpa_s->hw.modes, wpa_s->hw.num_modes, dpp_map);
+ 	if (!auth)
+ 		goto fail;
+ 	wpas_dpp_set_testing_options(wpa_s, auth);
+@@ -1074,6 +1078,7 @@ static void wpas_dpp_rx_auth_req(struct wpa_supplicant *wpa_s, const u8 *src,
+ 	const u8 *r_bootstrap, *i_bootstrap;
+ 	u16 r_bootstrap_len, i_bootstrap_len;
+ 	struct dpp_bootstrap_info *own_bi = NULL, *peer_bi = NULL;
++	int dpp_map = 0;
+ 
+ 	if (!wpa_s->dpp)
+ 		return;
+@@ -1123,10 +1128,15 @@ static void wpas_dpp_rx_auth_req(struct wpa_supplicant *wpa_s, const u8 *src,
+ 
+ 	wpa_s->dpp_gas_client = 0;
+ 	wpa_s->dpp_auth_ok_on_ack = 0;
++
++	if (wpa_s->conf && wpa_s->conf->dpp_map)
++		dpp_map = wpa_s->conf->dpp_map;
++
+ 	wpa_s->dpp_auth = dpp_auth_req_rx(wpa_s->dpp, wpa_s,
+ 					  wpa_s->dpp_allowed_roles,
+ 					  wpa_s->dpp_qr_mutual,
+-					  peer_bi, own_bi, freq, hdr, buf, len);
++					  peer_bi, own_bi, freq, hdr, buf, len,
++					  dpp_map);
+ 	if (!wpa_s->dpp_auth) {
+ 		wpa_printf(MSG_DEBUG, "DPP: No response generated");
+ 		return;
+@@ -2011,6 +2021,16 @@ static int wpas_dpp_process_conf_obj(void *ctx,
+ 	return res;
+ }
+ 
++int wpas_dpp_get_map_flag(void *ctx)
++{
++	struct wpa_supplicant *wpa_s = ctx;
++	int dpp_map = 0;
++
++	if (wpa_s->conf && wpa_s->conf->dpp_map)
++		dpp_map = wpa_s->conf->dpp_map;
++
++	return dpp_map;
++}
+ 
+ static void wpas_dpp_remove_bi(void *ctx, struct dpp_bootstrap_info *bi)
+ {
+@@ -2030,6 +2050,7 @@ wpas_dpp_rx_presence_announcement(struct wpa_supplicant *wpa_s, const u8 *src,
+ 	u16 r_bootstrap_len;
+ 	struct dpp_bootstrap_info *peer_bi;
+ 	struct dpp_authentication *auth;
++	int dpp_map = 0;
+ 
+ 	if (!wpa_s->dpp)
+ 		return;
+@@ -2061,8 +2082,11 @@ wpas_dpp_rx_presence_announcement(struct wpa_supplicant *wpa_s, const u8 *src,
+ 		return;
+ 	}
+ 
++	if (wpa_s->conf && wpa_s->conf->dpp_map)
++		dpp_map = wpa_s->conf->dpp_map;
++
+ 	auth = dpp_auth_init(wpa_s->dpp, wpa_s, peer_bi, NULL,
+-			     DPP_CAPAB_CONFIGURATOR, freq, NULL, 0);
++			     DPP_CAPAB_CONFIGURATOR, freq, NULL, 0, dpp_map);
+ 	if (!auth)
+ 		return;
+ 	wpas_dpp_set_testing_options(wpa_s, auth);
+@@ -3040,6 +3064,10 @@ int wpas_dpp_configurator_sign(struct wpa_supplicant *wpa_s, const char *cmd)
+ 
+ 	curve = get_param(cmd, " curve=");
+ 	wpas_dpp_set_testing_options(wpa_s, auth);
++
++	if (wpa_s->conf->dpp_map)
++		auth->dpp_map = wpa_s->conf->dpp_map;
++
+ 	if (dpp_set_configurator(auth, cmd) == 0 &&
+ 	    dpp_configurator_own_config(auth, curve, 0) == 0)
+ 		ret = wpas_dpp_handle_config_obj(wpa_s, auth,
+@@ -3356,6 +3384,7 @@ int wpas_dpp_init(struct wpa_supplicant *wpa_s)
+ 	config.cb_ctx = wpa_s;
+ #ifdef CONFIG_DPP2
+ 	config.remove_bi = wpas_dpp_remove_bi;
++	config.get_dpp_map_flag = wpas_dpp_get_map_flag;
+ #endif /* CONFIG_DPP2 */
+ 	wpa_s->dpp = dpp_global_init(&config);
+ 	return wpa_s->dpp ? 0 : -1;
+diff --git a/wpa_supplicant/dpp_supplicant.h b/wpa_supplicant/dpp_supplicant.h
+index b0d5fcf..6862137 100644
+--- a/wpa_supplicant/dpp_supplicant.h
++++ b/wpa_supplicant/dpp_supplicant.h
+@@ -41,5 +41,6 @@ int wpas_dpp_chirp(struct wpa_supplicant *wpa_s, const char *cmd);
+ void wpas_dpp_chirp_stop(struct wpa_supplicant *wpa_s);
+ int wpas_dpp_reconfig(struct wpa_supplicant *wpa_s, const char *cmd);
+ int wpas_dpp_ca_set(struct wpa_supplicant *wpa_s, const char *cmd);
++int wpas_dpp_get_map_flag(void *ctx);
+ 
+ #endif /* DPP_SUPPLICANT_H */

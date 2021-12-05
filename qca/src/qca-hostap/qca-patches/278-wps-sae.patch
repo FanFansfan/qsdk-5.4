@@ -1,0 +1,500 @@
+diff --git a/src/ap/wps_hostapd.c b/src/ap/wps_hostapd.c
+index fcccae1..76dd7d8 100644
+--- a/src/ap/wps_hostapd.c
++++ b/src/ap/wps_hostapd.c
+@@ -366,15 +366,15 @@ static int hapd_wps_reconfig_in_memory(struct hostapd_data *hapd,
+ 
+ #ifdef CONFIG_NO_TKIP
+ 	if (cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK |
+-			       WPS_AUTH_WPA | WPS_AUTH_WPAPSK))
++			       WPS_AUTH_WPA | WPS_AUTH_WPAPSK | WPS_AUTH_SAE))
+ 		bss->wpa = 2;
+ 	else
+ 		bss->wpa = 0;
+ #else /* CONFIG_NO_TKIP */
+ 	if ((cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK)) &&
+-	    (cred->auth_type & (WPS_AUTH_WPA | WPS_AUTH_WPAPSK)))
++	    (cred->auth_type & (WPS_AUTH_SAE | WPS_AUTH_WPA | WPS_AUTH_WPAPSK)))
+ 		bss->wpa = 3;
+-	else if (cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK))
++	else if (cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE))
+ 		bss->wpa = 2;
+ 	else if (cred->auth_type & (WPS_AUTH_WPA | WPS_AUTH_WPAPSK))
+ 		bss->wpa = 1;
+@@ -387,6 +387,8 @@ static int hapd_wps_reconfig_in_memory(struct hostapd_data *hapd,
+ 			bss->wpa_key_mgmt = WPA_KEY_MGMT_IEEE8021X;
+ 		if (cred->auth_type & (WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK))
+ 			bss->wpa_key_mgmt = WPA_KEY_MGMT_PSK;
++		if (hapd->conf->wps_cred_add_sae && (cred->auth_type == (WPS_AUTH_SAE)))
++			bss->wpa_key_mgmt = WPA_KEY_MGMT_SAE;
+ 
+ 		bss->wpa_pairwise = 0;
+ 		if (cred->encr_type & WPS_ENCR_AES) {
+@@ -413,6 +415,15 @@ static int hapd_wps_reconfig_in_memory(struct hostapd_data *hapd,
+ 					MGMT_FRAME_PROTECTION_OPTIONAL;
+ 			bss->sae_require_mfp = 1;
+ 		}
++		if (hapd->conf->wps_cred_add_sae &&
++		    (cred->auth_type == WPS_AUTH_SAE) &&
++		    cred->key_len != 2 * PMK_LEN) {
++			bss->wpa_key_mgmt = WPA_KEY_MGMT_SAE;
++			if (bss->ieee80211w == NO_MGMT_FRAME_PROTECTION)
++				bss->ieee80211w =
++					MGMT_FRAME_PROTECTION_OPTIONAL;
++			bss->sae_require_mfp = 1;
++		}
+ 
+ 		if (cred->key_len >= 8 && cred->key_len < 64) {
+ 			os_free(bss->ssid.wpa_passphrase);
+@@ -576,7 +587,9 @@ static int hapd_wps_cred_cb(struct hostapd_data *hapd, void *ctx)
+ 	else
+ 		wpa = 0;
+ #else /* CONFIG_NO_TKIP */
+-	if ((cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK)) &&
++	if (hapd->conf->wps_cred_add_sae && (cred->auth_type ==  WPS_AUTH_SAE))
++		wpa = 2;
++	else if ((cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK)) &&
+ 	    (cred->auth_type & (WPS_AUTH_WPA | WPS_AUTH_WPAPSK)))
+ 		wpa = 3;
+ 	else if (cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK))
+@@ -595,8 +608,12 @@ static int hapd_wps_cred_cb(struct hostapd_data *hapd, void *ctx)
+ 
+ 		fprintf(nconf, "wpa_key_mgmt=");
+ 		prefix = "";
++		if (hapd->conf->wps_cred_add_sae && cred->auth_type == (WPS_AUTH_SAE)) {
++			fprintf(nconf, "SAE");
++			prefix = " ";
++		}
+ 		if (cred->auth_type & (WPS_AUTH_WPA2 | WPS_AUTH_WPA)) {
+-			fprintf(nconf, "WPA-EAP");
++			fprintf(nconf, "%sWPA-EAP", prefix);
+ 			prefix = " ";
+ 		}
+ 		if (cred->auth_type & (WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK)) {
+@@ -1168,6 +1185,8 @@ int hostapd_init_wps(struct hostapd_data *hapd,
+ 	}
+ 
+ 	if (conf->wpa & WPA_PROTO_RSN) {
++		if (hapd->conf->wps_cred_add_sae && conf->wpa_key_mgmt == (WPA_KEY_MGMT_SAE))
++			wps->auth_types = WPS_AUTH_SAE;
+ 		if (conf->wpa_key_mgmt & (WPA_KEY_MGMT_PSK |
+ 						WPA_KEY_MGMT_PSK_SHA256))
+ 			wps->auth_types |= WPS_AUTH_WPA2PSK;
+@@ -1199,6 +1218,8 @@ int hostapd_init_wps(struct hostapd_data *hapd,
+ 		}
+ 		conf->wpa &= ~WPA_PROTO_WPA;
+ #else /* CONFIG_NO_TKIP */
++		if (hapd->conf->wps_cred_add_sae && (conf->wpa_key_mgmt == WPA_KEY_MGMT_SAE))
++			wps->auth_types = WPS_AUTH_SAE;
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_PSK)
+ 			wps->auth_types |= WPS_AUTH_WPAPSK;
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X)
+@@ -1253,17 +1274,23 @@ int hostapd_init_wps(struct hostapd_data *hapd,
+ 	if (conf->wps_state == WPS_STATE_NOT_CONFIGURED) {
+ 		/* Override parameters to enable security by default */
+ #ifdef CONFIG_NO_TKIP
+-		wps->auth_types = WPS_AUTH_WPA2PSK;
++		wps->auth_types = WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK;
+ 		wps->encr_types = WPS_ENCR_AES;
+ 		wps->encr_types_rsn = WPS_ENCR_AES;
+ 		wps->encr_types_wpa = WPS_ENCR_AES;
++		if (hapd->conf->wps_cred_add_sae)
++			wps->auth_types = WPS_AUTH_SAE | WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK;
+ #else /* CONFIG_NO_TKIP */
+ 		wps->auth_types = WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK;
+ 		wps->encr_types = WPS_ENCR_AES | WPS_ENCR_TKIP;
+ 		wps->encr_types_rsn = WPS_ENCR_AES | WPS_ENCR_TKIP;
+ 		wps->encr_types_wpa = WPS_ENCR_AES | WPS_ENCR_TKIP;
++		if (hapd->conf->wps_cred_add_sae)
++			wps->auth_types = WPS_AUTH_SAE | WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK;
+ #endif /* CONFIG_NO_TKIP */
+ 	}
++	if (hapd->conf->wps_cred_add_sae)
++		wps->wps_cred_add_sae = 1;
+ 
+ 	if ((hapd->conf->multi_ap & FRONTHAUL_BSS) &&
+ 	    hapd->conf->multi_ap_backhaul_ssid.ssid_len) {
+@@ -1848,6 +1875,8 @@ int hostapd_wps_config_ap(struct hostapd_data *hapd, const char *ssid,
+ #endif /* CONFIG_NO_TKIP */
+ 	else if (os_strncmp(auth, "WPA2PSK", 7) == 0)
+ 		cred.auth_type = WPS_AUTH_WPA2PSK;
++	else if (os_strncmp(auth, "SAE" , 3) == 0)
++		cred.auth_type = WPS_AUTH_SAE;
+ 	else
+ 		return -1;
+ 
+diff --git a/src/eap_peer/eap_wsc.c b/src/eap_peer/eap_wsc.c
+index 1a58db5..02eb85a 100644
+--- a/src/eap_peer/eap_wsc.c
++++ b/src/eap_peer/eap_wsc.c
+@@ -90,6 +90,8 @@ static int eap_wsc_new_ap_settings(struct wps_credential *cred,
+ 		cred->auth_type = WPS_AUTH_WPAPSK;
+ 	else if (os_strncmp(pos + 9, "WPA2PSK", 7) == 0)
+ 		cred->auth_type = WPS_AUTH_WPA2PSK;
++	else if (os_strncmp(pos + 9, "SAE", 3) == 0)
++		cred->auth_type = WPS_AUTH_SAE;
+ 	else {
+ 		wpa_printf(MSG_DEBUG, "EAP-WSC: Unknown new_auth");
+ 		return -1;
+diff --git a/src/wps/wps.h b/src/wps/wps.h
+index 68c35df..3e22e59 100644
+--- a/src/wps/wps.h
++++ b/src/wps/wps.h
+@@ -842,6 +842,7 @@ struct wps_context {
+ 	struct wpabuf *ap_nfc_dh_pubkey;
+ 	struct wpabuf *ap_nfc_dh_privkey;
+ 	struct wpabuf *ap_nfc_dev_pw;
++	int wps_cred_add_sae;
+ };
+ 
+ struct wps_registrar *
+diff --git a/src/wps/wps_attr_build.c b/src/wps/wps_attr_build.c
+index f372256..852aca6 100644
+--- a/src/wps/wps_attr_build.c
++++ b/src/wps/wps_attr_build.c
+@@ -313,6 +313,8 @@ int wps_build_auth_type_flags(struct wps_data *wps, struct wpabuf *msg)
+ #ifdef CONFIG_NO_TKIP
+ 	auth_types &= ~WPS_AUTH_WPAPSK;
+ #endif /* CONFIG_NO_TKIP */
++	if (!wps->wps->wps_cred_add_sae)
++		auth_types &= ~WPS_AUTH_SAE;
+ #ifdef CONFIG_WPS_TESTING
+ 	if (wps_force_auth_types_in_use) {
+ 		wpa_printf(MSG_DEBUG,
+diff --git a/src/wps/wps_attr_process.c b/src/wps/wps_attr_process.c
+index 44436a4..93d7cb1 100644
+--- a/src/wps/wps_attr_process.c
++++ b/src/wps/wps_attr_process.c
+@@ -210,7 +210,7 @@ static int wps_process_cred_mac_addr(struct wps_credential *cred,
+ 
+ static int wps_workaround_cred_key(struct wps_credential *cred)
+ {
+-	if (cred->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK) &&
++	if (cred->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE) &&
+ 	    cred->key_len > 8 && cred->key_len < 64 &&
+ 	    cred->key[cred->key_len - 1] == 0) {
+ #ifdef CONFIG_WPS_STRICT
+@@ -232,7 +232,7 @@ static int wps_workaround_cred_key(struct wps_credential *cred)
+ 	}
+ 
+ 
+-	if (cred->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK) &&
++	if (cred->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE) &&
+ 	    (cred->key_len < 8 || has_ctrl_char(cred->key, cred->key_len))) {
+ 		wpa_printf(MSG_INFO, "WPS: Reject credential with invalid WPA/WPA2-Personal passphrase");
+ 		wpa_hexdump_ascii_key(MSG_INFO, "WPS: Network Key",
+diff --git a/src/wps/wps_common.c b/src/wps/wps_common.c
+index 747dc47..157f533 100644
+--- a/src/wps/wps_common.c
++++ b/src/wps/wps_common.c
+@@ -390,7 +390,7 @@ struct wpabuf * wps_get_oob_cred(struct wps_context *wps, int rf_band,
+ 		os_memset(&cred, 0, sizeof(cred));
+ 		os_memcpy(cred.ssid, wps->ssid, wps->ssid_len);
+ 		cred.ssid_len = wps->ssid_len;
+-		cred.auth_type = WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK;
++		cred.auth_type = WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE;
+ 		cred.encr_type = WPS_ENCR_TKIP | WPS_ENCR_AES;
+ 		os_memcpy(cred.key, data.new_psk, data.new_psk_len);
+ 		cred.key_len = data.new_psk_len;
+diff --git a/src/wps/wps_defs.h b/src/wps/wps_defs.h
+index 9fccb4e..fc0b740 100644
+--- a/src/wps/wps_defs.h
++++ b/src/wps/wps_defs.h
+@@ -194,8 +194,10 @@ enum wps_msg_type {
+ #define WPS_AUTH_WPA 0x0008
+ #define WPS_AUTH_WPA2 0x0010
+ #define WPS_AUTH_WPA2PSK 0x0020
++#define WPS_AUTH_SAE 0x0040
+ #define WPS_AUTH_TYPES (WPS_AUTH_OPEN | WPS_AUTH_WPAPSK | WPS_AUTH_SHARED | \
+-			WPS_AUTH_WPA | WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK)
++			WPS_AUTH_WPA | WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK | \
++			WPS_AUTH_SAE)
+ 
+ /* Encryption Type Flags */
+ #define WPS_ENCR_NONE 0x0001
+diff --git a/src/wps/wps_enrollee.c b/src/wps/wps_enrollee.c
+index 819cd43..0bfdde1 100644
+--- a/src/wps/wps_enrollee.c
++++ b/src/wps/wps_enrollee.c
+@@ -259,7 +259,9 @@ static int wps_build_cred_auth_type(struct wps_data *wps, struct wpabuf *msg)
+ 	 * multiple Authentication Type bits in M7 AP Settings attribute by
+ 	 * showing only the most secure option from current configuration.
+ 	 */
+-	if (auth_type & WPS_AUTH_WPA2PSK)
++	if (auth_type & WPS_AUTH_SAE)
++		auth_type = WPS_AUTH_SAE;
++	else if (auth_type & WPS_AUTH_WPA2PSK)
+ 		auth_type = WPS_AUTH_WPA2PSK;
+ 	else if (auth_type & WPS_AUTH_WPAPSK)
+ 		auth_type = WPS_AUTH_WPAPSK;
+@@ -283,7 +285,7 @@ static int wps_build_cred_encr_type(struct wps_data *wps, struct wpabuf *msg)
+ 	 * multiple Encryption Type bits in M7 AP Settings attribute by
+ 	 * showing only the most secure option from current configuration.
+ 	 */
+-	if (wps->wps->ap_auth_type & (WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK)) {
++	if (wps->wps->ap_auth_type & (WPS_AUTH_SAE | WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK)) {
+ 		if (encr_type & WPS_ENCR_AES)
+ 			encr_type = WPS_ENCR_AES;
+ 		else if (encr_type & WPS_ENCR_TKIP)
+@@ -300,7 +302,7 @@ static int wps_build_cred_encr_type(struct wps_data *wps, struct wpabuf *msg)
+ 
+ static int wps_build_cred_network_key(struct wps_data *wps, struct wpabuf *msg)
+ {
+-	if ((wps->wps->ap_auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK)) &&
++	if ((wps->wps->ap_auth_type & (WPS_AUTH_SAE | WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK)) &&
+ 	    wps->wps->network_key_len == 0) {
+ 		char hex[65];
+ 		u8 psk[32];
+diff --git a/src/wps/wps_registrar.c b/src/wps/wps_registrar.c
+index 9e1ee36..5286f4c 100644
+--- a/src/wps/wps_registrar.c
++++ b/src/wps/wps_registrar.c
+@@ -1675,7 +1675,9 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
+ 	wpa_printf(MSG_DEBUG,
+ 		   "WPS: Own auth types 0x%x - masked Enrollee auth types 0x%x",
+ 		   wps->wps->auth_types, wps->auth_type);
+-	if (wps->auth_type & WPS_AUTH_WPA2PSK)
++	if (wps->auth_type == WPS_AUTH_SAE)
++		wps->auth_type = WPS_AUTH_SAE;
++	else if (wps->auth_type & WPS_AUTH_WPA2PSK)
+ 		wps->auth_type = WPS_AUTH_WPA2PSK;
+ #ifndef CONFIG_NO_TKIP
+ 	else if (wps->auth_type & WPS_AUTH_WPAPSK)
+@@ -1694,11 +1696,11 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
+ 		   "WPS: Own encr types 0x%x (rsn: 0x%x, wpa: 0x%x) - masked Enrollee encr types 0x%x",
+ 		   wps->wps->encr_types, wps->wps->encr_types_rsn,
+ 		   wps->wps->encr_types_wpa, wps->encr_type);
+-	if (wps->wps->ap && wps->auth_type == WPS_AUTH_WPA2PSK)
++	if (wps->wps->ap && ((wps->auth_type == WPS_AUTH_WPA2PSK) || (wps->auth_type == WPS_AUTH_SAE)))
+ 		wps->encr_type &= wps->wps->encr_types_rsn;
+ 	else if (wps->wps->ap && wps->auth_type == WPS_AUTH_WPAPSK)
+ 		wps->encr_type &= wps->wps->encr_types_wpa;
+-	if (wps->auth_type == WPS_AUTH_WPA2PSK ||
++	if (wps->auth_type == WPS_AUTH_SAE || wps->auth_type == WPS_AUTH_WPA2PSK ||
+ 	    wps->auth_type == WPS_AUTH_WPAPSK) {
+ 		if (wps->encr_type & WPS_ENCR_AES)
+ 			wps->encr_type = WPS_ENCR_AES;
+@@ -1760,7 +1762,8 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
+ 		os_memcpy(wps->cred.key, hex, PMK_LEN * 2);
+ 		wps->cred.key_len = PMK_LEN * 2;
+ 	} else if (!wps->wps->registrar->force_per_enrollee_psk &&
+-		   wps->use_psk_key && wps->wps->psk_set) {
++		   wps->use_psk_key && wps->wps->psk_set &&
++		   (wps->auth_type != WPS_AUTH_SAE)) {
+ 		wpa_printf(MSG_DEBUG, "WPS: Use PSK format for Network Key");
+ 		wpa_snprintf_hex(hex, sizeof(hex), wps->wps->psk, PMK_LEN);
+ 		os_memcpy(wps->cred.key, hex, PMK_LEN * 2);
+@@ -1770,7 +1773,7 @@ int wps_build_cred(struct wps_data *wps, struct wpabuf *msg)
+ 		os_memcpy(wps->cred.key, wps->wps->network_key,
+ 			  wps->wps->network_key_len);
+ 		wps->cred.key_len = wps->wps->network_key_len;
+-	} else if (wps->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK)) {
++	} else if (wps->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE)) {
+ 		/* Generate a random per-device PSK */
+ 		os_free(wps->new_psk);
+ 		wps->new_psk_len = PMK_LEN;
+@@ -2446,6 +2449,13 @@ static int wps_process_auth_type_flags(struct wps_data *wps, const u8 *auth)
+ 			   "WPS: Workaround - assume Enrollee supports WPA2PSK based on claimed WPA2 support");
+ 		auth_types |= WPS_AUTH_WPA2PSK;
+ 	}
++	if ((auth_types &
++             (WPS_AUTH_SAE | WPS_AUTH_WPA2 | WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK)) ==
++            (WPS_AUTH_WPA2 | WPS_AUTH_WPAPSK | WPS_AUTH_SAE)) {
++                wpa_printf(MSG_DEBUG,
++                           "WPS: Workaround - assume Enrollee supports SAE based on claimed SAE support");
++                auth_types |= WPS_AUTH_SAE;
++        }
+ #endif /* WPS_WORKAROUNDS */
+ 	wps->auth_type = wps->wps->auth_types & auth_types;
+ 	if (wps->auth_type == 0) {
+@@ -2890,7 +2900,9 @@ static void wps_sta_cred_cb(struct wps_data *wps)
+ 	 * encryption type in case the AP configuration includes more than one
+ 	 * option.
+ 	 */
+-	if (wps->cred.auth_type & WPS_AUTH_WPA2PSK)
++	if (wps->cred.auth_type & WPS_AUTH_SAE)
++		wps->cred.auth_type = WPS_AUTH_SAE;
++	else if (wps->cred.auth_type & WPS_AUTH_WPA2PSK)
+ 		wps->cred.auth_type = WPS_AUTH_WPA2PSK;
+ 	else if (wps->cred.auth_type & WPS_AUTH_WPAPSK)
+ 		wps->cred.auth_type = WPS_AUTH_WPAPSK;
+@@ -3338,7 +3350,7 @@ static enum wps_process_res wps_process_wsc_done(struct wps_data *wps,
+ 			cred.auth_type = WPS_AUTH_WPA2PSK;
+ 			cred.encr_type = WPS_ENCR_AES;
+ 		} else {
+-			cred.auth_type = WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK;
++			cred.auth_type = WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE;
+ 			cred.encr_type = WPS_ENCR_TKIP | WPS_ENCR_AES;
+ 		}
+ 		os_memcpy(cred.key, wps->new_psk, wps->new_psk_len);
+diff --git a/src/wps/wps_validate.c b/src/wps/wps_validate.c
+index 5c12bce..0cdf1a3 100644
+--- a/src/wps/wps_validate.c
++++ b/src/wps/wps_validate.c
+@@ -651,7 +651,7 @@ static int wps_validate_auth_type_flags(const u8 *flags, int mandatory)
+ 		return 0;
+ 	}
+ 	val = WPA_GET_BE16(flags);
+-	if ((val & ~WPS_AUTH_TYPES) || !(val & WPS_AUTH_WPA2PSK)) {
++	if ((val & ~WPS_AUTH_TYPES) || !(val & (WPS_AUTH_WPA2PSK))) {
+ 		wpa_printf(MSG_INFO, "WPS-STRICT: Invalid Authentication Type "
+ 			   "Flags attribute value 0x%04x", val);
+ 		return -1;
+diff --git a/wpa_supplicant/wps_supplicant.c b/wpa_supplicant/wps_supplicant.c
+index 528d868..d07b6b6 100644
+--- a/wpa_supplicant/wps_supplicant.c
++++ b/wpa_supplicant/wps_supplicant.c
+@@ -362,6 +362,38 @@ static void wpas_wps_remove_dup_network(struct wpa_supplicant *wpa_s,
+ 	}
+ }
+ 
++static void wpa_s_setup_sae_pt_wps(struct wpa_config *conf, struct wpa_ssid *ssid)
++{
++#ifdef CONFIG_SAE
++	int *groups = conf->sae_groups;
++	int default_groups[] = { 19, 20, 21, 0 };
++	const char *password;
++
++	if (!groups || groups[0] <= 0)
++		groups = default_groups;
++
++	password = ssid->sae_password;
++	if (!password)
++		password = ssid->passphrase;
++
++	if (!password ||
++	    (conf->sae_pwe == 0 && !ssid->sae_password_id &&
++	     !sae_pk_valid_password(password)) ||
++	    conf->sae_pwe == 3) {
++		/* PT derivation not needed */
++		sae_deinit_pt(ssid->pt);
++		ssid->pt = NULL;
++		return;
++	}
++
++	if (ssid->pt) {
++		return; /* PT already derived */
++	}
++	ssid->pt = sae_derive_pt(groups, ssid->ssid, ssid->ssid_len,
++				 (const u8 *) password, os_strlen(password),
++				 ssid->sae_password_id);
++#endif /* CONFIG_SAE */
++}
+ 
+ static int wpa_supplicant_wps_cred(void *ctx,
+ 				   const struct wps_credential *cred)
+@@ -411,17 +443,22 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 			   "auth_type into WPA2PSK");
+ 		auth_type = WPS_AUTH_WPA2PSK;
+ 	}
++	if (auth_type == (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE)) {
++                auth_type = WPS_AUTH_SAE;
++        }
+ 
+ 	if (auth_type != WPS_AUTH_OPEN &&
+ 	    auth_type != WPS_AUTH_WPAPSK &&
+-	    auth_type != WPS_AUTH_WPA2PSK) {
++	    auth_type != WPS_AUTH_WPA2PSK &&
++	    auth_type != WPS_AUTH_SAE &&
++	    (auth_type != (WPS_AUTH_SAE))) {
+ 		wpa_printf(MSG_DEBUG, "WPS: Ignored credentials for "
+ 			   "unsupported authentication type 0x%x",
+ 			   auth_type);
+ 		return 0;
+ 	}
+ 
+-	if (auth_type == WPS_AUTH_WPAPSK || auth_type == WPS_AUTH_WPA2PSK) {
++	if (auth_type == WPS_AUTH_WPAPSK || auth_type == WPS_AUTH_WPA2PSK || auth_type == WPS_AUTH_SAE) {
+ 		if (cred->key_len < 8 || cred->key_len > 2 * PMK_LEN) {
+ 			wpa_printf(MSG_ERROR, "WPS: Reject PSK credential with "
+ 				   "invalid Network Key length %lu",
+@@ -545,9 +582,18 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 		}
+ 		ssid->proto = WPA_PROTO_RSN;
+ 		break;
++	case WPS_AUTH_SAE:
++		if (wpa_s->conf->wps_cred_add_sae &&
++		    cred->key_len != 2 * PMK_LEN) {
++			ssid->auth_alg = WPA_AUTH_ALG_SAE;
++			ssid->key_mgmt = WPA_KEY_MGMT_SAE;
++			ssid->ieee80211w = MGMT_FRAME_PROTECTION_REQUIRED;
++			ssid->proto = WPA_PROTO_RSN;
++		}
++		break;
+ 	}
+ 
+-	if (ssid->key_mgmt & (WPA_KEY_MGMT_PSK | WPA_KEY_MGMT_PSK_SHA256)) {
++	if (ssid->key_mgmt & (WPA_KEY_MGMT_PSK | WPA_KEY_MGMT_PSK_SHA256 | WPA_KEY_MGMT_SAE)) {
+ 		if (cred->key_len == 2 * PMK_LEN) {
+ 			if (hexstr2bin((const char *) cred->key, ssid->psk,
+ 				       PMK_LEN)) {
+@@ -564,6 +610,10 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 				return -1;
+ 			os_memcpy(ssid->passphrase, cred->key, cred->key_len);
+ 			ssid->passphrase[cred->key_len] = '\0';
++			if (wpa_s->conf->wps_cred_add_sae) {
++				ssid->sae_password = os_strdup(ssid->passphrase);
++				wpa_s_setup_sae_pt_wps(wpa_s->conf, ssid);
++			}
+ 			wpa_config_update_psk(ssid);
+ 			ssid->export_keys = 1;
+ 		} else {
+@@ -574,7 +624,6 @@ static int wpa_supplicant_wps_cred(void *ctx,
+ 		}
+ 	}
+ 	ssid->priority = wpa_s->conf->wps_priority;
+-
+ 	wpas_wps_security_workaround(wpa_s, ssid, cred);
+ 
+ 	wpas_wps_remove_dup_network(wpa_s, ssid);
+@@ -816,7 +865,7 @@ static void wpa_supplicant_wps_event_er_ap_settings(
+ 	const struct wps_credential *cred = ap_settings->cred;
+ 
+ 	key_str[0] = '\0';
+-	if (cred->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK)) {
++	if (cred->auth_type & (WPS_AUTH_WPAPSK | WPS_AUTH_WPA2PSK | WPS_AUTH_SAE)) {
+ 		if (cred->key_len >= 8 && cred->key_len <= 64) {
+ 			os_memcpy(key_str, cred->key, cred->key_len);
+ 			key_str[cred->key_len] = '\0';
+@@ -1632,9 +1681,13 @@ int wpas_wps_init(struct wpa_supplicant *wpa_s)
+ #ifdef CONFIG_NO_TKIP
+ 	wps->auth_types = WPS_AUTH_WPA2PSK;
+ 	wps->encr_types = WPS_ENCR_AES;
++	if (wpa_s->conf->wps_cred_add_sae)
++		wps->auth_types |= WPS_AUTH_SAE;
+ #else /* CONFIG_NO_TKIP */
+ 	wps->auth_types = WPS_AUTH_WPA2PSK | WPS_AUTH_WPAPSK;
+ 	wps->encr_types = WPS_ENCR_AES | WPS_ENCR_TKIP;
++	if (wpa_s->conf->wps_cred_add_sae)
++		wps->auth_types |= WPS_AUTH_SAE;
+ #endif /* CONFIG_NO_TKIP */
+ 
+ 	os_memset(&rcfg, 0, sizeof(rcfg));
+@@ -1643,6 +1696,9 @@ int wpas_wps_init(struct wpa_supplicant *wpa_s)
+ 	rcfg.set_sel_reg_cb = wpas_wps_set_sel_reg_cb;
+ 	rcfg.cb_ctx = wpa_s;
+ 
++	if (wpa_s->conf->wps_cred_add_sae)
++		wps->wps_cred_add_sae = 1;
++
+ 	wps->registrar = wps_registrar_init(wps, &rcfg);
+ 	if (wps->registrar == NULL) {
+ 		wpa_printf(MSG_DEBUG, "Failed to initialize WPS Registrar");
+@@ -2057,7 +2113,7 @@ static int wpas_wps_network_to_cred(struct wpa_ssid *ssid,
+ 	cred->ssid_len = ssid->ssid_len;
+ 	if (ssid->key_mgmt & WPA_KEY_MGMT_PSK) {
+ 		cred->auth_type = (ssid->proto & WPA_PROTO_RSN) ?
+-			WPS_AUTH_WPA2PSK : WPS_AUTH_WPAPSK;
++			(WPS_AUTH_SAE | WPS_AUTH_WPA2PSK) : WPS_AUTH_WPAPSK;
+ 		if (ssid->pairwise_cipher & WPA_CIPHER_CCMP)
+ 			cred->encr_type = WPS_ENCR_AES;
+ 		else
+@@ -2145,6 +2201,8 @@ int wpas_wps_er_config(struct wpa_supplicant *wpa_s, const char *uuid,
+ 		cred.auth_type = WPS_AUTH_WPAPSK;
+ 	else if (os_strcmp(settings->auth, "WPA2PSK") == 0)
+ 		cred.auth_type = WPS_AUTH_WPA2PSK;
++	else if (os_strcmp(settings->auth, "SAE") == 0)
++		cred.auth_type = WPS_AUTH_SAE;
+ 	else
+ 		return -1;
+ 

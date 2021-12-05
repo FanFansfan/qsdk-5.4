@@ -1,0 +1,116 @@
+<!--
+     Copyright (c) 2017-2018 Qualcomm Technologies, Inc.
+     All Rights Reserved.
+     Confidential and Proprietary - Qualcomm Technologies, Inc.
+
+     Sample xml file used by lowi_test to configure the following:
+       1. log levels of different lowi modules
+       2. ranging parameters
+
+     ****************************
+     *** Log level parameters ***
+     ****************************
+     globalloglevel - to set the global log level
+     # EL_LOG_OFF = 0, EL_ERROR = 1, EL_WARNING = 2, EL_INFO = 3,
+     EL_DEBUG = 4, EL_VERBOSE = 5, EL_LOG_ALL = 100
+
+     loginfo - logconfig can multiple time for each module id and the
+     corresponding loglevel
+
+     moduleid - this is internally mapped to different tags.
+     Different module id is as follow:
+     1 = LOWI ENGINE, 2 = LOWI COMMON (diag and utils)
+     3 = LOWI CLIENT, 4 = LOWI SCANS, 5 = LOWI WIFI
+     6 = LOWI WIFIDRIVER, 7 = LOWI WIFIHAL, 8 = LOWI RANGING
+     9 = LOWI FSM, 10 = LOWI WIGIG RANGING
+
+     **************************
+     *** Ranging parameters ***
+     **************************
+     band:          0: 2.4G, 1: 5G, 2: 2.4G & 5G (default), 3: 60G
+     rttType:       2: single-sided (default), 3: double-sided
+     numFrames:     number of frames per burst. valid range: 2-31. 5: (default)
+     bw:            0: 20MHz (default), 1: 40 MHz, 2: 80 MHz, 3: 160 MHz
+     preamble:      0:LEG (default), 1:HT, 2:VHT,
+     peerType:      1: ACCESS_POINT (default), 2: PEER_DEVICE, 3: NAN_DEVICE,
+                    4: STA_DEVICE, 5: SOFT_AP
+     asap:          0: ASAP = 0, 1: ASAP = 1 (default)
+     lci:           1: request LCI, 0: do not request LCI (default)
+     civic:         1: request civic, 0: do not request civic (default)
+     ptsftimer      ptsf timer no preference
+                    0: time to start 1st burst preferred
+                    1: no preference of start of 1st burst (default)
+     forceLegAck:   1: use legacy acks only in ftm transactions regardless of peer
+                    0: use high speed acks when QTI peer is identified (default)
+     phymode:       -1: ignore (default)              0: LOWI_PHY_MODE_11A,
+                     1: LOWI_PHY_MODE_11G,            2: LOWI_PHY_MODE_11B,
+                     3: LOWI_PHY_MODE_11GONLY,        4: LOWI_PHY_MODE_11NA_HT20,
+                     5: LOWI_PHY_MODE_11NG_HT20,      6: LOWI_PHY_MODE_11NA_HT40,
+                     7: LOWI_PHY_MODE_11NG_HT40,      8: LOWI_PHY_MODE_11AC_VHT20,
+                     9: LOWI_PHY_MODE_11AC_VHT40,    10: LOWI_PHY_MODE_11AC_VHT80,
+                    11: LOWI_PHY_MODE_11AC_VHT20_2G, 12: LOWI_PHY_MODE_11AC_VHT40_2G,
+                    13: LOWI_PHY_MODE_11AC_VHT80_2G, 14: LOWI_PHY_MODE_11AC_VHT80_80,
+                    15: LOWI_PHY_MODE_11AC_VHT160,   16: LOWI_PHY_MODE_11AX_HE20,
+                    17: LOWI_PHY_MODE_11AX_HE40,     18: LOWI_PHY_MODE_11AX_HE80,
+                    19: LOWI_PHY_MODE_11AX_HE80_80,  20: LOWI_PHY_MODE_11AX_HE160,
+                    21: LOWI_PHY_MODE_11AX_HE20_2G,  22: LOWI_PHY_MODE_11AX_HE40_2G,
+                    23: LOWI_PHY_MODE_11AX_HE80_2G
+     paramControl:  0: use cached parameters (default), 1: do not use cached parameters
+     burstsexp:     total number of RTT bursts to be executed.
+                    valid values: 0 to 15. 0 means single shot (default)
+     burstduration: valid values: 2-11 and 15 as specified by the 802.11mc std for
+                    the FTM parameter burst duration. 11: 128ms (default)
+     burstperiod:   time interval between bursts (units: 100 ms). Applies to 1-sided and
+                    2-sided RTT multi-burst requests.
+                    range: 0-31, 0: no preference by initiator (2-sided RTT) (default)
+     center_freq1:  center frequency of channel (i.e. if 80MHz, then center
+                    freq of 80MHz channel, if 40MHz, then center freq of 40MHz
+                    channel, etc. 0: (default)
+     center_freq2:  only used in 80+80 case, center freq of 2nd 80MHz channel
+     ch:            valid wifi channel number 0: (default)
+     frequency:     valid 20MHz primary channel frequency. can be used instead of ch.
+                    0: (default)
+     mac:           mac address of target wifi node
+-->
+<body>
+  <configuration>
+    <logConfig>
+      <globalloglevel>3</globalloglevel>
+      <loginfo>
+        <moduleid>1</moduleid>
+        <logLevel>5</logLevel>
+      </loginfo>
+      <loginfo>
+        <moduleid>8</moduleid>
+        <logLevel>4</logLevel>
+      </loginfo>
+    </logConfig>
+  </configuration>
+  <ranging>
+    <ap>
+      <band>1</band>
+      <rttType>3</rttType>
+      <numFrames>5</numFrames>
+      <bw>2</bw>
+      <preamble>2</preamble>
+      <peerType>0</peerType>
+      <asap>1</asap>
+      <lci>0</lci>
+      <civic>0</civic>
+      <ptsftimer>0</ptsftimer>
+      <forceLegAck>0</forceLegAck>
+      <phymode>-1</phymode>
+      <paramControl>0</paramControl>
+      <burstsexp>0</burstsexp>
+      <burstduration>11</burstduration>
+      <burstperiod>10</burstperiod>
+      <center_freq1>5775</center_freq1>
+      <center_freq2>0</center_freq2>
+      <ch>149</ch>
+      <mac>8c:fd:f0:01:d1:57</mac>
+    </ap>
+   </ranging>
+  <summary>
+    <mac>8c:fd:f0:01:d1:57</mac>
+  </summary>
+</body>

@@ -1,0 +1,84 @@
+#!/bin/sh
+#
+# Copyright (C) 2015 OpenWrt.org
+#
+
+. /lib/functions/uci-defaults.sh
+
+board_config_update
+
+board=$(board_name)
+
+case "$board" in
+rt-ac58u)
+	ucidef_set_led_wlan "wlan2g" "WLAN2G" "$board:blue:wlan2G" "phy0tpt"
+	ucidef_set_led_wlan "wlan5g" "WLAN5G" "$board:blue:wlan5G" "phy1tpt"
+	ucidef_set_led_netdev "wan" "WAN" "$board:blue:wan" "eth1"
+	ucidef_set_led_switch "lan" "LAN" "$board:blue:lan" "switch0" "0x1e"
+	;;
+hr1901n)
+        ucidef_set_led_netdev "wlan2g" "WLAN2G" "hr1901:blue:wlan2g" "wifi0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "hr1901:blue:wlan5g" "wifi1"
+	ucidef_set_led_switch "wan" "WAN" "hr1901:blue:wan" "switch0" "0x02"
+	ucidef_set_led_switch "lan1" "LAN1" "hr1901:blue:lan1" "switch0" "0x04"
+	ucidef_set_led_switch "lan2" "LAN2" "hr1901:blue:lan2" "switch0" "0x08"
+	ucidef_set_led_switch "lan3" "LAN3" "hr1901:blue:lan3" "switch0" "0x10"
+	ucidef_set_led_switch "lan4" "LAN4" "hr1901:blue:lan4" "switch0" "0x20"
+        ;;
+ap-cp01-c1)
+	ucidef_set_led_default "power" "POWER" "green:power" "1"
+        ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan2g" "wifi1"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan5g" "wifi0"
+        ;;
+ap-ac04)
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "led_blue" "wifi0"
+	ucidef_set_led_switch "wan" "WAN" "net_blue" "switch0" "0x04"
+	ucidef_set_led_netdev "wlan5g2" "WLAN5G2" "led_ant" "wifi2"
+	;;
+ap-cp03-c1|\
+ap-cp01-c3)
+	ucidef_set_led_default "power" "POWER" "green:power" "1"
+        ucidef_set_led_netdev "wlan2g" "WLAN2G" "green:wlan2g" "wifi1"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "green:wlan5g" "wifi0"
+        ;;
+l1000)
+	ucidef_set_led_default "power" "POWER" "l1000:blue:power" "1"
+        ucidef_set_led_netdev "wlan2g" "WLAN2G" "l1000:blue:wlan2g" "wifi0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "l1000:bule:wlan5g" "wifi1"
+	ucidef_set_led_switch "wan" "WAN" "l1000:bule:wan" "switch0" "0x20"
+        ;;
+r619ac |\
+r619ac-128m)
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "r619ac:blue:wlan2g" "wifi0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "r619ac:blue:wlan5g" "wifi1"
+	;;
+rt-acrh17)
+	ucidef_set_led_default "status" "STATUS" "$board:blue:status" "1"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "$board:blue:wlan2g" "wifi0"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "$board:blue:wlan5g" "wifi1"
+	ucidef_set_led_netdev "wan" "WAN" "$board:blue:wan" "eth1"
+	ucidef_set_led_switch "lan1" "LAN1" "board:blue:lan1" "switch0" "0x02"
+	ucidef_set_led_switch "lan2" "LAN2" "board:blue:lan2" "switch0" "0x04"
+	ucidef_set_led_switch "lan3" "LAN3" "board:blue:lan3" "switch0" "0x08"
+	ucidef_set_led_switch "lan4" "LAN4" "board:blue:lan4" "switch0" "0x10"
+	;;
+wxr-2533dhp)
+	ucidef_set_led_default "power" "POWER" "white:power" "1"
+	ucidef_set_led_netdev "wlan5g" "WLAN5G" "wxr-2533dhp:orange:wireless" "wifi0"
+	ucidef_set_led_netdev "wlan2g" "WLAN2G" "wxr-2533dhp:white:wireless" "wifi1"
+	ucidef_set_led_switch "wan" "WAN" "wxr-2533dhp:orange:internet" "switch0" "0x20"
+	ucidef_set_led_usbport "usb" "USB" "wxr-2533dhp:green:usb" "usb1-port1" "usb2-port1" "usb3-port1" "usb4-port1"
+	;;
+r7800)
+	ucidef_set_led_usbport "usb1" "USB 1" "white:usb1" "usb1-port1" "usb2-port1"
+	ucidef_set_led_usbport "usb2" "USB 2" "white:usb2" "usb3-port1" "usb4-port1"
+	ucidef_set_led_switch "wan" "WAN" "white:wan" "switch0" "0x20"
+	ucidef_set_led_ide "esata" "eSATA" "white:esata"
+	;;
+*)
+	;;
+esac
+
+board_config_flush
+
+exit 0

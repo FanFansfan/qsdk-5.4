@@ -1,0 +1,73 @@
+diff --git a/src/drivers/driver_athr.c b/src/drivers/driver_athr.c
+<<<<<<< HEAD
+index 95ffc09..afe4d5f 100644
+=======
+index fdcbb75..519bac7 100644
+>>>>>>> parent of f03f691... qca-hostap: Fix to resolve compilation warnings
+--- a/src/drivers/driver_athr.c
++++ b/src/drivers/driver_athr.c
+@@ -2091,7 +2091,7 @@ static int driver_atheros_get_range(void *priv)
+ 		drv->capa.max_remain_on_chan = 1000;
+ 
+ 		wpa_printf(MSG_DEBUG, "  capabilities: key_mgmt 0x%x enc 0x%x "
+-			   "flags 0x%x",
++			   "flags %llx",
+ 			   drv->capa.key_mgmt, drv->capa.enc, (unsigned long long) drv->capa.flags);
+ 	} else {
+ 		wpa_printf(MSG_DEBUG, "SIOCGIWRANGE: too old (short) data - "
+<<<<<<< HEAD
+ 			   "assuming WPA is not supported");
+@@ -2350,7 +2350,7 @@ static void athr_clear_bssid(struct driver_atheros_data *drv)
+ 
+ 
+ static int driver_atheros_deauthenticate(void *priv, const u8 *addr,
+-					 int reason_code)
++					 u16 reason_code)
+ {
+ 	struct driver_atheros_data *drv = priv;
+ 	int ret;
+=======
+>>>>>>> parent of f03f691... qca-hostap: Fix to resolve compilation warnings
+@@ -2927,7 +2927,7 @@ static struct hostapd_hw_modes * athr_add_11b(struct hostapd_hw_modes *modes,
+ 
+ static struct hostapd_hw_modes * athr_get_hw_feature_data(void *priv,
+ 							  u16 *num_modes,
+-							  u16 *flags)
++							  u16 *flags, u8 *dfs)
+ {
+ 	struct driver_atheros_data *drv = priv;
+ 	struct iwreq iwr;
+@@ -2941,6 +2941,7 @@ static struct hostapd_hw_modes * athr_get_hw_feature_data(void *priv,
+ 	int bw_div = 1;
+ 	*num_modes = 0;
+ 	*flags = 0;
++	dfs=dfs; /*to avoid warning*/
+ 
+ 	os_memset(&chans, 0, sizeof(chans));
+ 	os_memset(&iwr, 0, sizeof(iwr));
+@@ -3307,7 +3308,7 @@ static int driver_atheros_if_remove(void *priv, enum wpa_driver_if_type type,
+ 
+ 
+ static int driver_atheros_hapd_sta_deauth(void *priv, const u8 *own_addr,
+-					  const u8 *addr, int reason_code)
++					  const u8 *addr, u16 reason_code)
+ {
+ 	struct driver_atheros_data *drv = priv;
+ 	struct ieee80211req_mlme mlme;
+@@ -3668,7 +3669,7 @@ static int athr_set_intra_bss(void *priv, int enabled)
+ 	return set80211param(drv, IEEE80211_PARAM_APBRIDGE, enabled, 1);
+ }
+ 
+-
++#if 0
+ static int athr_driver_acl(struct driver_atheros_data *drv, const char *cmd,
+ 			   char *buf, size_t buf_len)
+ {
+@@ -3739,6 +3740,7 @@ static int athr_driver_acl(struct driver_atheros_data *drv, const char *cmd,
+ 
+ 	return ret;
+ }
++#endif
+ 
+ #ifdef ANDROID
+ /**

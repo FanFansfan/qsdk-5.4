@@ -1,0 +1,37 @@
+diff --git a/src/drivers/driver_nl80211.c b/src/drivers/driver_nl80211.c
+index 99041a0..cb19c0f 100644
+--- a/src/drivers/driver_nl80211.c
++++ b/src/drivers/driver_nl80211.c
+@@ -3048,7 +3048,6 @@ static u32 wpa_cipher_to_cipher_suite(unsigned int cipher)
+ 	return 0;
+ }
+ 
+-
+ static int wpa_cipher_to_cipher_suites(unsigned int ciphers, u32 suites[],
+ 				       int max_suites)
+ {
+@@ -4331,6 +4330,7 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 	int beacon_set;
+ 	int num_suites;
+ 	u32 suites[20], suite;
++	u32 akm_suites[NL80211_MAX_NR_AKM_SUITES];
+ 	u32 ver;
+ #ifdef CONFIG_MESH
+ 	struct wpa_driver_mesh_bss_params mesh_params;
+@@ -4425,14 +4425,14 @@ static int wpa_driver_nl80211_set_ap(void *priv,
+ 	wpa_printf(MSG_DEBUG, "nl80211: key_mgmt_suites=0x%x",
+ 		   params->key_mgmt_suites);
+ 	num_suites = wpa_key_mgmt_to_suites(params->key_mgmt_suites,
+-					    suites, ARRAY_SIZE(suites));
++					    akm_suites, ARRAY_SIZE(akm_suites));
+ 	if (num_suites > NL80211_MAX_NR_AKM_SUITES)
+ 		wpa_printf(MSG_DEBUG,
+ 			   "nl80211: Not enough room for all AKM suites (num_suites=%d > NL80211_MAX_NR_AKM_SUITES)",
+ 			   num_suites);
+ 	else if (num_suites &&
+ 		 nla_put(msg, NL80211_ATTR_AKM_SUITES, num_suites * sizeof(u32),
+-			 suites))
++			 akm_suites))
+ 		goto fail;
+ 
+ 	if (params->key_mgmt_suites & WPA_KEY_MGMT_IEEE8021X_NO_WPA &&

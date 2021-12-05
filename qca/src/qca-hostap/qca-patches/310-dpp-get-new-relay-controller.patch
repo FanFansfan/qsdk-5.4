@@ -1,0 +1,100 @@
+diff --git a/src/ap/dpp_hostapd.c b/src/ap/dpp_hostapd.c
+index ef7a2e6..e1385e5 100644
+--- a/src/ap/dpp_hostapd.c
++++ b/src/ap/dpp_hostapd.c
+@@ -858,7 +858,7 @@ static void hostapd_dpp_rx_auth_req(struct hostapd_data *hapd, const u8 *src,
+ 	if (!own_bi) {
+ 		if (dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+ 					src, hdr, buf, len, freq, i_bootstrap,
+-					r_bootstrap) == 0)
++					r_bootstrap, hapd) == 0)
+ 			return;
+ 	}
+ #endif /* CONFIG_DPP2 */
+@@ -1449,7 +1449,7 @@ hostapd_dpp_rx_presence_announcement(struct hostapd_data *hapd, const u8 *src,
+ 	if (!peer_bi) {
+ 		if (dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+ 					src, hdr, buf, len, freq, NULL,
+-					r_bootstrap) == 0)
++					r_bootstrap, hapd) == 0)
+ 			return;
+ 		wpa_printf(MSG_DEBUG,
+ 			   "DPP: No matching bootstrapping information found");
+@@ -1541,7 +1541,7 @@ hostapd_dpp_rx_reconfig_announcement(struct hostapd_data *hapd, const u8 *src,
+ 	if (!conf) {
+ 		if (dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+ 					src, hdr, buf, len, freq, NULL,
+-					NULL) == 0)
++					NULL, hapd) == 0)
+ 			return;
+ 		wpa_printf(MSG_DEBUG,
+ 			   "DPP: No matching Configurator information found");
+@@ -2067,7 +2067,7 @@ void hostapd_dpp_rx_action(struct hostapd_data *hapd, const u8 *src,
+ 
+ #ifdef CONFIG_DPP2
+ 	if (dpp_relay_rx_action(hapd->iface->interfaces->dpp,
+-				src, hdr, buf, len, freq, NULL, NULL) == 0)
++				src, hdr, buf, len, freq, NULL, NULL, hapd) == 0)
+ 		return;
+ #endif /* CONFIG_DPP2 */
+ 
+diff --git a/src/common/dpp.h b/src/common/dpp.h
+index e1b3e0f..cf0c80b 100644
+--- a/src/common/dpp.h
++++ b/src/common/dpp.h
+@@ -686,7 +686,7 @@ int dpp_relay_add_controller(struct dpp_global *dpp,
+ 			     struct dpp_relay_config *config);
+ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
+ 			const u8 *buf, size_t len, unsigned int freq,
+-			const u8 *i_bootstrap, const u8 *r_bootstrap);
++			const u8 *i_bootstrap, const u8 *r_bootstrap, void *cb_ctx);
+ int dpp_relay_rx_gas_req(struct dpp_global *dpp, const u8 *src, const u8 *data,
+ 			 size_t data_len);
+ int dpp_controller_start(struct dpp_global *dpp,
+diff --git a/src/common/dpp_tcp.c b/src/common/dpp_tcp.c
+index 1b75166..0bdc531 100644
+--- a/src/common/dpp_tcp.c
++++ b/src/common/dpp_tcp.c
+@@ -160,6 +160,23 @@ dpp_relay_controller_get(struct dpp_global *dpp, const u8 *pkhash)
+ }
+ 
+ 
++static struct dpp_relay_controller *
++dpp_new_relay_controller_get(struct dpp_global *dpp, void *cb_ctx)
++{
++	struct dpp_relay_controller *ctrl;
++
++	if (!dpp)
++		return NULL;
++
++	dl_list_for_each(ctrl, &dpp->controllers, struct dpp_relay_controller,
++			 list) {
++		if (cb_ctx == ctrl->cb_ctx)
++			return ctrl;
++	}
++
++	return NULL;
++}
++
+ static void dpp_controller_gas_done(struct dpp_connection *conn)
+ {
+ 	struct dpp_authentication *auth = conn->auth;
+@@ -485,7 +502,7 @@ static int dpp_relay_tx(struct dpp_connection *conn, const u8 *hdr,
+ 
+ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
+ 			const u8 *buf, size_t len, unsigned int freq,
+-			const u8 *i_bootstrap, const u8 *r_bootstrap)
++			const u8 *i_bootstrap, const u8 *r_bootstrap, void *cb_ctx)
+ {
+ 	struct dpp_relay_controller *ctrl;
+ 	struct dpp_connection *conn;
+@@ -513,8 +530,7 @@ int dpp_relay_rx_action(struct dpp_global *dpp, const u8 *src, const u8 *hdr,
+ 	    type == DPP_PA_RECONFIG_ANNOUNCEMENT) {
+ 		/* TODO: Could send this to all configured Controllers. For now,
+ 		 * only the first Controller is supported. */
+-		ctrl = dl_list_first(&dpp->controllers,
+-				     struct dpp_relay_controller, list);
++		ctrl = dpp_new_relay_controller_get(dpp, cb_ctx);
+ 	} else {
+ 		if (!r_bootstrap)
+ 			return -1;
